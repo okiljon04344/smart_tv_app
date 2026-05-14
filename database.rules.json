@@ -1,0 +1,26 @@
+{
+    "rules": {
+        "movies": {
+            ".read": true,
+            ".write": "auth != null && auth.token.email === 'okiljonnabev@gmail.com'"
+        },
+        "categories": {
+            ".read": true,
+            ".write": "auth != null && auth.token.email === 'okiljonnabev@gmail.com'"
+        },
+        "users": {
+            "$uid": {
+                ".read": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')",
+                "favorites": {
+                    ".write": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')"
+                },
+                "profile_info": {
+                    ".write": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')"
+                },
+                "subscription": {
+                    ".write": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')"
+                }
+            }
+        }
+    }
+}

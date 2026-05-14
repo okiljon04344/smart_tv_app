@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "647851842245",
+    "firebase_url": "https://android-tv-ec34b-default-rtdb.firebaseio.com",
+    "project_id": "android-tv-ec34b",
+    "storage_bucket": "android-tv-ec34b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:647851842245:android:efafdb41666482df542eac",
+        "android_client_info": {
+          "package_name": "com.example.smart_tv_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "647851842245-3327g9j0mhkindv71on5cili7it7h95l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.smart_tv_app",
+            "certificate_hash": "5eb3e69505bc1a2f812fbd426e29e99ae7eaab7f"
+          }
+        },
+        {
+          "client_id": "647851842245-fs3tmsqkkkrqv8u21c00ka601ve9sf0e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPkvZxa5bOunXwuMwLNSp4fOVhMegC6Tk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "647851842245-fs3tmsqkkkrqv8u21c00ka601ve9sf0e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
