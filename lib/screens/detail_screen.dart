@@ -1,31 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/content.dart';
 import '../services/locale_provider.dart';
 import '../services/favorites_provider.dart';
+import '../utils/tv_key_helper.dart';
 import 'player_screen.dart';
 
-bool _isTvActivateEvent(KeyEvent event) {
-  final key = event.logicalKey;
-  final isActivate =
-      key == LogicalKeyboardKey.select ||
-      key == LogicalKeyboardKey.enter ||
-      key == LogicalKeyboardKey.space ||
-      key == LogicalKeyboardKey.gameButtonA;
-  if (!isActivate) return false;
-  if (key == LogicalKeyboardKey.select) {
-    return event is KeyDownEvent || event is KeyUpEvent;
-  }
-  return event is KeyDownEvent;
-}
-
-bool _isTvBackEvent(KeyEvent event) {
-  final key = event.logicalKey;
-  return key == LogicalKeyboardKey.escape ||
-      key == LogicalKeyboardKey.goBack ||
-      key == LogicalKeyboardKey.browserBack;
-}
+bool _isTvActivateEvent(KeyEvent event) => isTvActivateEvent(event);
+bool _isTvBackEvent(KeyEvent event) => isTvBackEvent(event);
 
 class DetailScreen extends StatefulWidget {
   final Content content;
@@ -71,8 +53,7 @@ class _DetailScreenState extends State<DetailScreen>
       canRequestFocus: false,
       skipTraversal: true,
       onKeyEvent: (node, event) {
-        if ((event is KeyDownEvent || event is KeyUpEvent) &&
-            _isTvBackEvent(event)) {
+        if (_isTvBackEvent(event)) {
           final now = DateTime.now().millisecondsSinceEpoch;
           if (now - _lastBackPopMs < 250) {
             return KeyEventResult.handled;

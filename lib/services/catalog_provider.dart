@@ -6,10 +6,9 @@ import 'package:flutter/foundation.dart';
 import '../data/sample_data.dart';
 
 class CatalogProvider extends ChangeNotifier {
-  final DatabaseReference _moviesRef = FirebaseDatabase.instance.ref('movies');
-  final DatabaseReference _categoriesRef = FirebaseDatabase.instance.ref(
-    'categories',
-  );
+  DatabaseReference get _moviesRef => FirebaseDatabase.instance.ref('movies');
+  DatabaseReference get _categoriesRef =>
+      FirebaseDatabase.instance.ref('categories');
 
   StreamSubscription<DatabaseEvent>? _moviesSub;
   StreamSubscription<DatabaseEvent>? _categoriesSub;
@@ -62,29 +61,35 @@ class CatalogProvider extends ChangeNotifier {
     _moviesSub?.cancel();
     _categoriesSub?.cancel();
 
-    _moviesSub = _moviesRef.onValue.listen(
-      (event) {
-        _moviesRaw = event.snapshot.value;
-        _applyLiveUpdate();
-      },
-      onError: (Object e) {
-        _isOffline = true;
-        _error = e.toString();
-        notifyListeners();
-      },
-    );
+    try {
+      _moviesSub = _moviesRef.onValue.listen(
+        (event) {
+          _moviesRaw = event.snapshot.value;
+          _applyLiveUpdate();
+        },
+        onError: (Object e) {
+          _isOffline = true;
+          _error = e.toString();
+          notifyListeners();
+        },
+      );
 
-    _categoriesSub = _categoriesRef.onValue.listen(
-      (event) {
-        _categoriesRaw = event.snapshot.value;
-        _applyLiveUpdate();
-      },
-      onError: (Object e) {
-        _isOffline = true;
-        _error = e.toString();
-        notifyListeners();
-      },
-    );
+      _categoriesSub = _categoriesRef.onValue.listen(
+        (event) {
+          _categoriesRaw = event.snapshot.value;
+          _applyLiveUpdate();
+        },
+        onError: (Object e) {
+          _isOffline = true;
+          _error = e.toString();
+          notifyListeners();
+        },
+      );
+    } catch (e) {
+      _isOffline = true;
+      _error = e.toString();
+      notifyListeners();
+    }
   }
 
   void _applyLiveUpdate() {

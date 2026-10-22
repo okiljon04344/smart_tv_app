@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'signup_screen.dart';
 import '../services/auth_provider.dart';
 import '../services/locale_provider.dart';
+import '../utils/tv_key_helper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final FocusNode _googleSignInFocus = FocusNode(
     debugLabel: 'login_google_btn',
   );
+  final FocusNode _guestSignInFocus = FocusNode(debugLabel: 'login_guest_btn');
   final FocusNode _registerFocus = FocusNode(debugLabel: 'login_register_btn');
 
   @override
@@ -33,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordFocus.dispose();
     _emailSignInFocus.dispose();
     _googleSignInFocus.dispose();
+    _guestSignInFocus.dispose();
     _registerFocus.dispose();
     super.dispose();
   }
@@ -276,6 +278,43 @@ class _LoginScreenState extends State<LoginScreen> {
                                 FocusTraversalOrder(
                                   order: const NumericFocusOrder(5),
                                   child: _TvAction(
+                                    focusNode: _guestSignInFocus,
+                                    enabled: !auth.isBusy,
+                                    onActivate: auth.signInAsGuest,
+                                    child: OutlinedButton.icon(
+                                      onPressed: auth.isBusy
+                                          ? null
+                                          : auth.signInAsGuest,
+                                      icon: const Icon(
+                                        Icons.tv_rounded,
+                                        size: 20,
+                                      ),
+                                      label: const Text(
+                                        'TV Demo / Guest Mode',
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        side: BorderSide(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                FocusTraversalOrder(
+                                  order: const NumericFocusOrder(6),
+                                  child: _TvAction(
                                     focusNode: _registerFocus,
                                     enabled: !auth.isBusy,
                                     onActivate: () => Navigator.push(
@@ -328,20 +367,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-bool _isTvActivateEvent(KeyEvent event) {
-  final key = event.logicalKey;
-  final isActivate =
-      key == LogicalKeyboardKey.select ||
-      key == LogicalKeyboardKey.enter ||
-      key == LogicalKeyboardKey.space ||
-      key == LogicalKeyboardKey.gameButtonA;
-  if (!isActivate) return false;
-  if (key == LogicalKeyboardKey.select) {
-    return event is KeyDownEvent || event is KeyUpEvent;
-  }
-  return event is KeyDownEvent;
-}
-
 class _TvAction extends StatelessWidget {
   final FocusNode focusNode;
   final bool enabled;
@@ -360,13 +385,28 @@ class _TvAction extends StatelessWidget {
     return Focus(
       focusNode: focusNode,
       onKeyEvent: (node, event) {
-        if (enabled && _isTvActivateEvent(event)) {
+        if (enabled && isTvActivateEvent(event)) {
           onActivate();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
       },
-      child: child,
+      child: Builder(
+        builder: (ctx) {
+          final focused = Focus.of(ctx).hasFocus;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: focused ? Colors.white : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            child: ExcludeFocus(child: child),
+          );
+        },
+      ),
     );
   }
 }

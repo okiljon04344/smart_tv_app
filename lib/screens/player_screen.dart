@@ -9,6 +9,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../models/content.dart';
 import '../services/favorites_provider.dart';
 import '../services/locale_provider.dart';
+import '../utils/tv_key_helper.dart';
 
 const _sampleVideos = [
   'assets/videos/sample.mp4',
@@ -23,27 +24,10 @@ const _sampleVideos = [
   'assets/videos/video4.mp4',
 ];
 
-bool _isTvActivateEvent(KeyEvent event) {
-  final key = event.logicalKey;
-  final isActivate =
-      key == LogicalKeyboardKey.select ||
-      key == LogicalKeyboardKey.enter ||
-      key == LogicalKeyboardKey.space ||
-      key == LogicalKeyboardKey.gameButtonA ||
-      key == LogicalKeyboardKey.mediaPlayPause;
-  if (!isActivate) return false;
-  if (key == LogicalKeyboardKey.select) {
-    return event is KeyDownEvent || event is KeyUpEvent;
-  }
-  return event is KeyDownEvent;
-}
+bool _isTvActivateEvent(KeyEvent event) =>
+    isTvActivateEvent(event, includeMediaPlayPause: true);
 
-bool _isTvBackEvent(KeyEvent event) {
-  final key = event.logicalKey;
-  return key == LogicalKeyboardKey.escape ||
-      key == LogicalKeyboardKey.goBack ||
-      key == LogicalKeyboardKey.browserBack;
-}
+bool _isTvBackEvent(KeyEvent event) => isTvBackEvent(event);
 
 class PlayerScreen extends StatefulWidget {
   final Content content;
@@ -265,8 +249,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     return Focus(
       autofocus: true,
       onKeyEvent: (node, event) {
-        if ((event is KeyDownEvent || event is KeyUpEvent) &&
-            _isTvBackEvent(event)) {
+        if (_isTvBackEvent(event)) {
           final now = DateTime.now().millisecondsSinceEpoch;
           if (now - _lastBackPopMs < 250) {
             return KeyEventResult.handled;
