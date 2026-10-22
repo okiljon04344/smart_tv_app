@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_provider.dart';
 import '../services/locale_provider.dart';
+import '../utils/tv_key_helper.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -293,20 +293,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 }
 
-bool _isTvActivateEvent(KeyEvent event) {
-  final key = event.logicalKey;
-  final isActivate =
-      key == LogicalKeyboardKey.select ||
-      key == LogicalKeyboardKey.enter ||
-      key == LogicalKeyboardKey.space ||
-      key == LogicalKeyboardKey.gameButtonA;
-  if (!isActivate) return false;
-  if (key == LogicalKeyboardKey.select) {
-    return event is KeyDownEvent || event is KeyUpEvent;
-  }
-  return event is KeyDownEvent;
-}
-
 class _TvAction extends StatelessWidget {
   final FocusNode focusNode;
   final bool enabled;
@@ -325,13 +311,28 @@ class _TvAction extends StatelessWidget {
     return Focus(
       focusNode: focusNode,
       onKeyEvent: (node, event) {
-        if (enabled && _isTvActivateEvent(event)) {
+        if (enabled && isTvActivateEvent(event)) {
           onActivate();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
       },
-      child: child,
+      child: Builder(
+        builder: (ctx) {
+          final focused = Focus.of(ctx).hasFocus;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: focused ? Colors.white : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            child: ExcludeFocus(child: child),
+          );
+        },
+      ),
     );
   }
 }

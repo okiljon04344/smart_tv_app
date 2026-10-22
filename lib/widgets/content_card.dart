@@ -1,24 +1,9 @@
-﻿import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 import '../models/content.dart';
-import '../screens/home_screen.dart';
 import '../screens/detail_screen.dart';
 import '../services/favorites_provider.dart';
+import '../utils/tv_key_helper.dart';
 import 'package:provider/provider.dart';
-
-bool _isTvActivateEvent(KeyEvent event) {
-  final key = event.logicalKey;
-  final isActivate =
-      key == LogicalKeyboardKey.select ||
-      key == LogicalKeyboardKey.enter ||
-      key == LogicalKeyboardKey.space ||
-      key == LogicalKeyboardKey.gameButtonA;
-  if (!isActivate) return false;
-  if (key == LogicalKeyboardKey.select) {
-    return event is KeyDownEvent || event is KeyUpEvent;
-  }
-  return event is KeyDownEvent;
-}
 
 class ContentCard extends StatefulWidget {
   final Content content;
@@ -48,27 +33,18 @@ class _ContentCardState extends State<ContentCard> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          AppSelectIntent: CallbackAction<AppSelectIntent>(
-            onInvoke: (_) {
-              _openDetail(context);
-              return null;
-            },
-          ),
+      child: Focus(
+        autofocus: widget.autofocus,
+        onFocusChange: (hasFocus) => setState(() => _focused = hasFocus),
+        onKeyEvent: (node, event) {
+          if (isTvActivateEvent(event)) {
+            _openDetail(context);
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
         },
-        child: Focus(
-          autofocus: widget.autofocus,
-          onFocusChange: (hasFocus) => setState(() => _focused = hasFocus),
-          onKeyEvent: (node, event) {
-            if (_isTvActivateEvent(event)) {
-              _openDetail(context);
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
-          },
-          child: GestureDetector(
-            onTap: () => _openDetail(context),
+        child: GestureDetector(
+          onTap: () => _openDetail(context),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 220,
@@ -226,7 +202,6 @@ class _ContentCardState extends State<ContentCard> {
             ),
           ),
         ),
-      ),
     );
   }
 }

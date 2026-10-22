@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,10 +6,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/sample_data.dart';
 import '../models/content.dart';
 import 'admin_screen.dart';
+import 'detail_screen.dart';
+import 'player_screen.dart';
 import '../services/auth_provider.dart';
 import '../services/catalog_provider.dart';
 import '../services/locale_provider.dart';
 import '../services/favorites_provider.dart';
+import '../utils/tv_key_helper.dart';
 import '../widgets/content_card.dart';
 
 class AppSelectIntent extends Intent {
@@ -91,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return _MainContent(
           navIndex: _selectedNavIndex,
           categories: _currentCategories,
+          onOpenSearch: () => _selectNav(5),
         );
     }
   }
@@ -100,73 +104,58 @@ class _HomeScreenState extends State<HomeScreen> {
     final l = Provider.of<LocaleProvider>(context);
     final navItems = _buildNavItems(l);
 
-    return Shortcuts(
-      shortcuts: <ShortcutActivator, Intent>{
-        const SingleActivator(LogicalKeyboardKey.enter):
-            const AppSelectIntent(),
-        const SingleActivator(LogicalKeyboardKey.select):
-            const AppSelectIntent(),
-        const SingleActivator(LogicalKeyboardKey.gameButtonA):
-            const AppSelectIntent(),
-        const SingleActivator(LogicalKeyboardKey.space):
-            const AppSelectIntent(),
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0A0A0F),
-        body: Row(
-          children: [
-            FocusScope(
-              node: _sidebarScope,
-              child: _Sidebar(
-                navItems: navItems,
-                selectedIndex: _selectedNavIndex,
-                onItemSelected: _selectNav,
-                onEnterContent: () => _contentScope.requestFocus(),
-              ),
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0F),
+      body: Row(
+        children: [
+          FocusScope(
+            node: _sidebarScope,
+            child: _Sidebar(
+              navItems: navItems,
+              selectedIndex: _selectedNavIndex,
+              onItemSelected: _selectNav,
+              onEnterContent: () => _contentScope.requestFocus(),
             ),
-            Expanded(
-              child: FocusScope(
-                node: _contentScope,
-                onKeyEvent: (node, event) {
-                  if (event is KeyDownEvent &&
-                      event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-                    final movedLeft =
-                        FocusManager.instance.primaryFocus?.focusInDirection(
-                          TraversalDirection.left,
-                        ) ??
-                        false;
-                    if (!movedLeft) {
-                      _sidebarScope.requestFocus();
-                    }
-                    return KeyEventResult.handled;
-                  }
-                  // Back / Escape → return to sidebar
-                  if (event is KeyDownEvent &&
-                      (event.logicalKey == LogicalKeyboardKey.escape ||
-                          event.logicalKey == LogicalKeyboardKey.browserBack ||
-                          event.logicalKey == LogicalKeyboardKey.goBack)) {
+          ),
+          Expanded(
+            child: FocusScope(
+              node: _contentScope,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent &&
+                    event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                  final movedLeft =
+                      FocusManager.instance.primaryFocus?.focusInDirection(
+                        TraversalDirection.left,
+                      ) ??
+                      false;
+                  if (!movedLeft) {
                     _sidebarScope.requestFocus();
-                    return KeyEventResult.handled;
                   }
-                  return KeyEventResult.ignored;
+                  return KeyEventResult.handled;
+                }
+                // Back / Escape → return to sidebar
+                if (isTvBackEvent(event)) {
+                  _sidebarScope.requestFocus();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(opacity: animation, child: child);
                 },
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 260),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    return FadeTransition(opacity: animation, child: child);
-                  },
-                  // KeyedSubtree forces re-autofocus when switching sections
-                  child: KeyedSubtree(
-                    key: ValueKey(_selectedNavIndex),
-                    child: _buildContent(),
-                  ),
+                // KeyedSubtree forces re-autofocus when switching sections
+                child: KeyedSubtree(
+                  key: ValueKey(_selectedNavIndex),
+                  child: _buildContent(),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -309,90 +298,75 @@ class _SidebarItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 8),
-      child: Actions(
-        actions: {
-          AppSelectIntent: CallbackAction<AppSelectIntent>(
-            onInvoke: (_) {
-              _select();
-              return null;
-            },
-          ),
+      child: Focus(
+        autofocus: autofocus,
+        onKeyEvent: (node, event) {
+          // ArrowRight → move into content
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.arrowRight) {
+            _select();
+            return KeyEventResult.handled;
+          }
+          if (isTvActivateEvent(event)) {
+            _select();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
         },
-        child: Focus(
-          autofocus: autofocus,
-          onKeyEvent: (node, event) {
-            // ArrowRight → move into content
-            if (event is KeyDownEvent &&
-                event.logicalKey == LogicalKeyboardKey.arrowRight) {
-              _select();
-              return KeyEventResult.handled;
-            }
-            // Enter / Select / Space — also handle KeyUpEvent for TV remote OK
-            if ((event is KeyDownEvent || event is KeyUpEvent) &&
-                (event.logicalKey == LogicalKeyboardKey.enter ||
-                    event.logicalKey == LogicalKeyboardKey.select ||
-                    event.logicalKey == LogicalKeyboardKey.space ||
-                    event.logicalKey == LogicalKeyboardKey.gameButtonA)) {
-              _select();
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
-          },
-          child: Builder(
-            builder: (ctx) {
-              final focused = Focus.of(ctx).hasFocus;
-              return GestureDetector(
-                onTap: _select,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(vertical: 11),
-                  decoration: BoxDecoration(
+        child: Builder(
+          builder: (ctx) {
+            final focused = Focus.of(ctx).hasFocus;
+            return GestureDetector(
+              onTap: _select,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                decoration: BoxDecoration(
+                  color: focused
+                      ? const Color(0xFF6C63FF).withValues(alpha: 0.2)
+                      : isSelected
+                      ? const Color(0xFF6C63FF).withValues(alpha: 0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
                     color: focused
-                        ? const Color(0xFF6C63FF).withValues(alpha: 0.2)
+                        ? const Color(0xFF6C63FF)
                         : isSelected
-                        ? const Color(0xFF6C63FF).withValues(alpha: 0.12)
+                        ? const Color(0xFF6C63FF).withValues(alpha: 0.5)
                         : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: focused
-                          ? const Color(0xFF6C63FF)
-                          : isSelected
-                          ? const Color(0xFF6C63FF).withValues(alpha: 0.5)
-                          : Colors.transparent,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        data.icon,
-                        color: focused || isSelected
-                            ? const Color(0xFF6C63FF)
-                            : Colors.white.withValues(alpha: 0.4),
-                        size: 24,
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        data.label,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: focused || isSelected
-                              ? Colors.white
-                              : Colors.white.withValues(alpha: 0.35),
-                          fontSize: 9.5,
-                          fontWeight: focused || isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ],
+                    width: 1.5,
                   ),
                 ),
-              );
-            },
-          ),
+                child: Column(
+                  children: [
+                    Icon(
+                      data.icon,
+                      color: focused || isSelected
+                          ? const Color(0xFF6C63FF)
+                          : Colors.white.withValues(alpha: 0.4),
+                      size: 24,
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      data.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: focused || isSelected
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.35),
+                        fontSize: 9.5,
+                        fontWeight: focused || isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -404,8 +378,13 @@ class _SidebarItem extends StatelessWidget {
 class _MainContent extends StatefulWidget {
   final int navIndex;
   final List<Category> categories;
+  final VoidCallback onOpenSearch;
 
-  const _MainContent({required this.navIndex, required this.categories});
+  const _MainContent({
+    required this.navIndex,
+    required this.categories,
+    required this.onOpenSearch,
+  });
 
   @override
   State<_MainContent> createState() => _MainContentState();
@@ -497,7 +476,10 @@ class _MainContentState extends State<_MainContent> {
               ],
             ),
           ),
-        _TopBar(title: navTitles[widget.navIndex]),
+        _TopBar(
+          title: navTitles[widget.navIndex],
+          onSearchTap: widget.onOpenSearch,
+        ),
         _FeaturedBanner(
           banners: _banners,
           currentIndex: _bannerIndex,
@@ -601,7 +583,8 @@ class _BannerData {
 
 class _TopBar extends StatelessWidget {
   final String title;
-  const _TopBar({required this.title});
+  final VoidCallback onSearchTap;
+  const _TopBar({required this.title, required this.onSearchTap});
 
   @override
   Widget build(BuildContext context) {
@@ -621,9 +604,20 @@ class _TopBar extends StatelessWidget {
           const Spacer(),
           _ClockWidget(),
           const SizedBox(width: 16),
-          _IconBtn(Icons.search),
+          _IconBtn(Icons.search, onTap: onSearchTap),
           const SizedBox(width: 10),
-          _IconBtn(Icons.notifications_outlined),
+          _IconBtn(
+            Icons.notifications_outlined,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No new notifications'),
+                  backgroundColor: Color(0xFF6C63FF),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -655,27 +649,38 @@ class _ClockWidget extends StatelessWidget {
 
 class _IconBtn extends StatelessWidget {
   final IconData icon;
-  const _IconBtn(this.icon);
+  final VoidCallback? onTap;
+  const _IconBtn(this.icon, {this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Focus(
+      onKeyEvent: (node, event) {
+        if (onTap != null && isTvActivateEvent(event)) {
+          onTap!();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
       child: Builder(
         builder: (ctx) {
           final focused = Focus.of(ctx).hasFocus;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(
-              color: focused
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: focused ? Colors.black : Colors.white,
-              size: 20,
+          return GestureDetector(
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: focused
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: focused ? Colors.black : Colors.white,
+                size: 20,
+              ),
             ),
           );
         },
@@ -785,12 +790,36 @@ class _FeaturedBanner extends StatelessWidget {
                         icon: Icons.play_arrow,
                         label: l.t('btn_watch'),
                         isPrimary: true,
+                        onTap: () {
+                          final items = allContent;
+                          if (items.isEmpty) return;
+                          final item = items[currentIndex % items.length];
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PlayerScreen(content: item),
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(width: 12),
                       _BannerBtn(
                         icon: Icons.add,
                         label: l.t('btn_save'),
                         isPrimary: false,
+                        onTap: () {
+                          final items = allContent;
+                          if (items.isEmpty) return;
+                          final item = items[currentIndex % items.length];
+                          context.read<FavoritesProvider>().toggleFavorite(item);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("'${item.title}' ${l.t('added_to_list')}"),
+                              backgroundColor: const Color(0xFF6C63FF),
+                              duration: const Duration(seconds: 1),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -829,56 +858,68 @@ class _BannerBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool isPrimary;
+  final VoidCallback? onTap;
 
   const _BannerBtn({
     required this.icon,
     required this.label,
     required this.isPrimary,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Focus(
+      onKeyEvent: (node, event) {
+        if (onTap != null && isTvActivateEvent(event)) {
+          onTap!();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
       child: Builder(
         builder: (ctx) {
           final focused = Focus.of(ctx).hasFocus;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-            decoration: BoxDecoration(
-              color: focused
-                  ? Colors.white
-                  : isPrimary
-                  ? const Color(0xFF6C63FF)
-                  : Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(9),
-              boxShadow: focused
-                  ? [
-                      BoxShadow(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        blurRadius: 14,
-                      ),
-                    ]
-                  : [],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  color: focused ? Colors.black : Colors.white,
-                  size: 19,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
+          return GestureDetector(
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              decoration: BoxDecoration(
+                color: focused
+                    ? Colors.white
+                    : isPrimary
+                    ? const Color(0xFF6C63FF)
+                    : Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(9),
+                boxShadow: focused
+                    ? [
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          blurRadius: 14,
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
                     color: focused ? Colors.black : Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    size: 19,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: focused ? Colors.black : Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -976,19 +1017,42 @@ class _CategoryRow extends StatelessWidget {
               ),
               const Spacer(),
               Focus(
+                onKeyEvent: (node, event) {
+                  if (items.isNotEmpty && isTvActivateEvent(event)) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DetailScreen(content: items.first),
+                      ),
+                    );
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
                 child: Builder(
                   builder: (ctx) {
                     final focused = Focus.of(ctx).hasFocus;
-                    return AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 180),
-                      style: TextStyle(
-                        color: focused
-                            ? Colors.white
-                            : const Color(0xFF6C63FF).withValues(alpha: 0.7),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                    return GestureDetector(
+                      onTap: items.isEmpty
+                          ? null
+                          : () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    DetailScreen(content: items.first),
+                              ),
+                            ),
+                      child: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 180),
+                        style: TextStyle(
+                          color: focused
+                              ? Colors.white
+                              : const Color(0xFF6C63FF).withValues(alpha: 0.7),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        child: Text(l.t('see_all')),
                       ),
-                      child: Text(l.t('see_all')),
                     );
                   },
                 ),
@@ -1204,30 +1268,56 @@ class _SearchScreenState extends State<_SearchScreen> {
               children:
                   ['Sci-Fi', 'Drama', 'Animation', 'Comedy', 'Horror', 'Sport']
                       .map(
-                        (tag) => GestureDetector(
-                          onTap: () {
-                            _controller.text = tag;
-                            setState(() => _query = tag);
+                        (tag) => Focus(
+                          onKeyEvent: (node, event) {
+                            if (isTvActivateEvent(event)) {
+                              _controller.text = tag;
+                              setState(() => _query = tag);
+                              return KeyEventResult.handled;
+                            }
+                            return KeyEventResult.ignored;
                           },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.07),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.12),
-                              ),
-                            ),
-                            child: Text(
-                              tag,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
+                          child: Builder(
+                            builder: (ctx) {
+                              final focused = Focus.of(ctx).hasFocus;
+                              return GestureDetector(
+                                onTap: () {
+                                  _controller.text = tag;
+                                  setState(() => _query = tag);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: focused
+                                        ? const Color(0xFF6C63FF)
+                                        : Colors.white.withValues(alpha: 0.07),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: focused
+                                          ? Colors.white
+                                          : Colors.white.withValues(
+                                              alpha: 0.12,
+                                            ),
+                                      width: focused ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    tag,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: focused
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       )
@@ -1504,10 +1594,7 @@ class _SettingsScreenState extends State<_SettingsScreen> {
                   _focusSelectedMenuItem();
                   return KeyEventResult.handled;
                 }
-                if (event is KeyDownEvent &&
-                    (event.logicalKey == LogicalKeyboardKey.escape ||
-                        event.logicalKey == LogicalKeyboardKey.browserBack ||
-                        event.logicalKey == LogicalKeyboardKey.goBack)) {
+                if (isTvBackEvent(event)) {
                   _focusSelectedMenuItem();
                   return KeyEventResult.handled;
                 }
@@ -2154,18 +2241,7 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-bool _isTvActivateEvent(KeyEvent event) {
-  final key = event.logicalKey;
-  final isActivate =
-      key == LogicalKeyboardKey.enter ||
-      key == LogicalKeyboardKey.space ||
-      key == LogicalKeyboardKey.select ||
-      key == LogicalKeyboardKey.gameButtonA;
-  if (!isActivate) return false;
-  // Android TV often emits Select as KeyUp only; other keys are KeyDown.
-  if (key == LogicalKeyboardKey.select) return event is KeyUpEvent;
-  return event is KeyDownEvent;
-}
+bool _isTvActivateEvent(KeyEvent event) => isTvActivateEvent(event);
 
 class _SliderRow extends StatefulWidget {
   final String label;
@@ -2385,13 +2461,15 @@ class _ToggleRow extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  Switch(
-                    value: value,
-                    onChanged: onChanged,
-                    activeThumbColor: const Color(0xFF6C63FF),
-                    activeTrackColor: const Color(
-                      0xFF6C63FF,
-                    ).withValues(alpha: 0.4),
+                  ExcludeFocus(
+                    child: Switch(
+                      value: value,
+                      onChanged: onChanged,
+                      activeThumbColor: const Color(0xFF6C63FF),
+                      activeTrackColor: const Color(
+                        0xFF6C63FF,
+                      ).withValues(alpha: 0.4),
+                    ),
                   ),
                 ],
               ),

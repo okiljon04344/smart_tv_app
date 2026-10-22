@@ -13,6 +13,7 @@ class AuthProvider extends ChangeNotifier {
   );
 
   User? _user;
+  bool _isGuest = false;
   bool _isBusy = false;
   String? _error;
 
@@ -45,10 +46,17 @@ class AuthProvider extends ChangeNotifier {
       _isTvLikeDevice && _isAdminEmail(email);
 
   User? get user => _user;
+  bool get isGuest => _isGuest;
   bool get isBusy => _isBusy;
-  bool get isSignedIn => _user != null;
+  bool get isSignedIn => _user != null || _isGuest;
   bool get isAdmin => _isAdminEmail(_user?.email);
   String? get error => _error;
+
+  void signInAsGuest() {
+    _isGuest = true;
+    _error = null;
+    notifyListeners();
+  }
 
   Future<void> init() async {
     _isBusy = true;
@@ -209,6 +217,7 @@ class AuthProvider extends ChangeNotifier {
         // Ignore Google sign-out issues for email/password users.
       }
       _user = null;
+      _isGuest = false;
       _error = null;
     } catch (e) {
       _error = e.toString();
