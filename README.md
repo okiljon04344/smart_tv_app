@@ -4,7 +4,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
-[![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Web%20%7C%20Desktop-6C63FF)](#)
+[![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Web%20%7C%20Desktop-E9A23B)](#)
 
 > **🇯🇵 日本語** | **🇬🇧 English** | **🇺🇿 O'zbekcha**
 

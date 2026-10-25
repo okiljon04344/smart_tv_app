@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 import 'signup_screen.dart';
 import '../services/auth_provider.dart';
 import '../services/locale_provider.dart';
-import '../utils/tv_key_helper.dart';
+import '../theme/app_theme.dart';
+import '../widgets/tv_action.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('${l.t('login_error')}: $err'),
-          backgroundColor: Colors.red,
+          backgroundColor: context.colors.error,
         ),
       );
       auth.clearError();
@@ -71,20 +72,26 @@ class _LoginScreenState extends State<LoginScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(l.t('login_success')),
-          backgroundColor: const Color(0xFF6C63FF),
           duration: const Duration(milliseconds: 900),
         ),
       );
     }
   }
 
+  void _openSignUp() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SignUpScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.watch<LocaleProvider>();
     final auth = context.watch<AuthProvider>();
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF090A11),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -95,263 +102,160 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 520),
-                    child: Card(
-                      color: const Color(0xFF141624),
-                      elevation: 10,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.08),
-                        ),
+                    child: Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainer,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.outline),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: FocusTraversalGroup(
-                          policy: OrderedTraversalPolicy(),
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  l.t('login_title'),
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
+                      child: FocusTraversalGroup(
+                        policy: OrderedTraversalPolicy(),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                l.t('login_title'),
+                                textAlign: TextAlign.center,
+                                style: context.text.headlineMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                l.t('login_subtitle'),
+                                textAlign: TextAlign.center,
+                                style: context.text.bodyMedium?.copyWith(
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(1),
+                                child: TextFormField(
+                                  autofocus: true,
+                                  focusNode: _emailFocus,
+                                  controller: _emailCtrl,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  onFieldSubmitted: (_) =>
+                                      _passwordFocus.requestFocus(),
+                                  decoration: InputDecoration(
+                                    labelText: l.t('login_email'),
+                                  ),
+                                  validator: (v) {
+                                    if (v == null || v.trim().isEmpty) {
+                                      return l.t('login_email_required');
+                                    }
+                                    if (!v.contains('@')) {
+                                      return l.t('login_email_invalid');
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(2),
+                                child: TextFormField(
+                                  focusNode: _passwordFocus,
+                                  controller: _passwordCtrl,
+                                  obscureText: true,
+                                  textInputAction: TextInputAction.done,
+                                  onFieldSubmitted: (_) =>
+                                      _submitEmail(auth, l),
+                                  decoration: InputDecoration(
+                                    labelText: l.t('login_password'),
+                                  ),
+                                  validator: (v) {
+                                    if (v == null || v.isEmpty) {
+                                      return l.t('login_password_required');
+                                    }
+                                    if (v.length < 6) {
+                                      return l.t('login_password_short');
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(3),
+                                child: TvAction(
+                                  focusNode: _emailSignInFocus,
+                                  enabled: !auth.isBusy,
+                                  onActivate: () => _submitEmail(auth, l),
+                                  child: ElevatedButton(
+                                    onPressed: auth.isBusy
+                                        ? null
+                                        : () => _submitEmail(auth, l),
+                                    child: Text(l.t('login_signin_with_email')),
                                   ),
                                 ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  l.t('login_subtitle'),
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.72),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                FocusTraversalOrder(
-                                  order: const NumericFocusOrder(1),
-                                  child: TextFormField(
-                                    autofocus: true,
-                                    focusNode: _emailFocus,
-                                    controller: _emailCtrl,
-                                    keyboardType: TextInputType.emailAddress,
-                                    textInputAction: TextInputAction.next,
-                                    style: const TextStyle(color: Colors.white),
-                                    onFieldSubmitted: (_) =>
-                                        _passwordFocus.requestFocus(),
-                                    decoration: InputDecoration(
-                                      labelText: l.t('login_email'),
-                                      labelStyle: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.75,
-                                        ),
-                                      ),
-                                      filled: true,
-                                      fillColor: const Color(0xFF1B1D2D),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                              ),
+                              const SizedBox(height: 12),
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(4),
+                                child: TvAction(
+                                  focusNode: _googleSignInFocus,
+                                  enabled: !auth.isBusy,
+                                  onActivate: () => _submitGoogle(auth, l),
+                                  child: OutlinedButton.icon(
+                                    onPressed: auth.isBusy
+                                        ? null
+                                        : () => _submitGoogle(auth, l),
+                                    icon: const Icon(
+                                      Icons.g_mobiledata,
+                                      size: 28,
                                     ),
-                                    validator: (v) {
-                                      if (v == null || v.trim().isEmpty) {
-                                        return l.t('login_email_required');
-                                      }
-                                      if (!v.contains('@')) {
-                                        return l.t('login_email_invalid');
-                                      }
-                                      return null;
-                                    },
+                                    label: Text(
+                                      l.t('login_signin_with_google'),
+                                    ),
                                   ),
                                 ),
+                              ),
+                              const SizedBox(height: 12),
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(5),
+                                child: TvAction(
+                                  focusNode: _guestSignInFocus,
+                                  enabled: !auth.isBusy,
+                                  onActivate: auth.signInAsGuest,
+                                  child: OutlinedButton.icon(
+                                    onPressed: auth.isBusy
+                                        ? null
+                                        : auth.signInAsGuest,
+                                    icon: const Icon(
+                                      Icons.tv_rounded,
+                                      size: 22,
+                                    ),
+                                    label: const Text('TV Demo / Guest Mode'),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(6),
+                                child: TvAction(
+                                  focusNode: _registerFocus,
+                                  enabled: !auth.isBusy,
+                                  onActivate: _openSignUp,
+                                  child: TextButton(
+                                    onPressed: auth.isBusy ? null : _openSignUp,
+                                    child: Text(
+                                      l.t('login_switch_to_register'),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (auth.isBusy) ...[
                                 const SizedBox(height: 12),
-                                FocusTraversalOrder(
-                                  order: const NumericFocusOrder(2),
-                                  child: TextFormField(
-                                    focusNode: _passwordFocus,
-                                    controller: _passwordCtrl,
-                                    obscureText: true,
-                                    textInputAction: TextInputAction.done,
-                                    style: const TextStyle(color: Colors.white),
-                                    onFieldSubmitted: (_) =>
-                                        _submitEmail(auth, l),
-                                    decoration: InputDecoration(
-                                      labelText: l.t('login_password'),
-                                      labelStyle: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.75,
-                                        ),
-                                      ),
-                                      filled: true,
-                                      fillColor: const Color(0xFF1B1D2D),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    validator: (v) {
-                                      if (v == null || v.isEmpty) {
-                                        return l.t('login_password_required');
-                                      }
-                                      if (v.length < 6) {
-                                        return l.t('login_password_short');
-                                      }
-                                      return null;
-                                    },
-                                  ),
+                                const Center(
+                                  child: CircularProgressIndicator(),
                                 ),
-                                const SizedBox(height: 14),
-                                FocusTraversalOrder(
-                                  order: const NumericFocusOrder(3),
-                                  child: _TvAction(
-                                    focusNode: _emailSignInFocus,
-                                    enabled: !auth.isBusy,
-                                    onActivate: () => _submitEmail(auth, l),
-                                    child: ElevatedButton(
-                                      onPressed: auth.isBusy
-                                          ? null
-                                          : () => _submitEmail(auth, l),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF6C63FF,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        l.t('login_signin_with_email'),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                FocusTraversalOrder(
-                                  order: const NumericFocusOrder(4),
-                                  child: _TvAction(
-                                    focusNode: _googleSignInFocus,
-                                    enabled: !auth.isBusy,
-                                    onActivate: () => _submitGoogle(auth, l),
-                                    child: OutlinedButton.icon(
-                                      onPressed: auth.isBusy
-                                          ? null
-                                          : () => _submitGoogle(auth, l),
-                                      icon: const Icon(
-                                        Icons.g_mobiledata,
-                                        size: 28,
-                                      ),
-                                      label: Text(
-                                        l.t('login_signin_with_google'),
-                                      ),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: Colors.white,
-                                        side: BorderSide(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.3,
-                                          ),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                FocusTraversalOrder(
-                                  order: const NumericFocusOrder(5),
-                                  child: _TvAction(
-                                    focusNode: _guestSignInFocus,
-                                    enabled: !auth.isBusy,
-                                    onActivate: auth.signInAsGuest,
-                                    child: OutlinedButton.icon(
-                                      onPressed: auth.isBusy
-                                          ? null
-                                          : auth.signInAsGuest,
-                                      icon: const Icon(
-                                        Icons.tv_rounded,
-                                        size: 20,
-                                      ),
-                                      label: const Text(
-                                        'TV Demo / Guest Mode',
-                                      ),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: Colors.white,
-                                        side: BorderSide(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.3,
-                                          ),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                FocusTraversalOrder(
-                                  order: const NumericFocusOrder(6),
-                                  child: _TvAction(
-                                    focusNode: _registerFocus,
-                                    enabled: !auth.isBusy,
-                                    onActivate: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const SignUpScreen(),
-                                      ),
-                                    ),
-                                    child: TextButton(
-                                      onPressed: auth.isBusy
-                                          ? null
-                                          : () => Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const SignUpScreen(),
-                                              ),
-                                            ),
-                                      child: Text(
-                                        l.t('login_switch_to_register'),
-                                        style: const TextStyle(
-                                          color: Color(0xFF9C97FF),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (auth.isBusy) ...[
-                                  const SizedBox(height: 8),
-                                  const Center(
-                                    child: CircularProgressIndicator(
-                                      color: Color(0xFF6C63FF),
-                                    ),
-                                  ),
-                                ],
                               ],
-                            ),
+                            ],
                           ),
                         ),
                       ),
@@ -362,50 +266,6 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class _TvAction extends StatelessWidget {
-  final FocusNode focusNode;
-  final bool enabled;
-  final VoidCallback onActivate;
-  final Widget child;
-
-  const _TvAction({
-    required this.focusNode,
-    required this.enabled,
-    required this.onActivate,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Focus(
-      focusNode: focusNode,
-      onKeyEvent: (node, event) {
-        if (enabled && isTvActivateEvent(event)) {
-          onActivate();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Builder(
-        builder: (ctx) {
-          final focused = Focus.of(ctx).hasFocus;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: focused ? Colors.white : Colors.transparent,
-                width: 2,
-              ),
-            ),
-            child: ExcludeFocus(child: child),
-          );
-        },
       ),
     );
   }

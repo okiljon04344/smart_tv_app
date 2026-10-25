@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../models/content.dart';
 import '../screens/detail_screen.dart';
 import '../services/favorites_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/tv_key_helper.dart';
-import 'package:provider/provider.dart';
 
 class ContentCard extends StatefulWidget {
   final Content content;
   final bool autofocus;
 
   const ContentCard({super.key, required this.content, this.autofocus = false});
+
+  /// Height a horizontal row must reserve for one card.
+  static const double rowHeight = 208;
 
   @override
   State<ContentCard> createState() => _ContentCardState();
@@ -28,8 +33,10 @@ class _ContentCardState extends State<ContentCard> {
   @override
   Widget build(BuildContext context) {
     final favorites = context.watch<FavoritesProvider>();
-    final isFav = favorites.isFavorite(widget.content.id);
-    final progress = favorites.getProgress(widget.content.id);
+    final colors = context.colors;
+    final content = widget.content;
+    final isFav = favorites.isFavorite(content.id);
+    final progress = favorites.getProgress(content.id);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
@@ -45,187 +52,151 @@ class _ContentCardState extends State<ContentCard> {
         },
         child: GestureDetector(
           onTap: () => _openDetail(context),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 150),
+            scale: _focused ? 1.05 : 1,
+            child: SizedBox(
               width: 220,
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _focused ? Colors.white : Colors.transparent,
-                  width: 2,
-                ),
-                boxShadow: _focused
-                    ? [
-                        BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          spreadRadius: 2,
-                        ),
-                      ]
-                    : [],
-              ),
-              child: AnimatedScale(
-                duration: const Duration(milliseconds: 200),
-                scale: _focused ? 1.04 : 1,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Stack(
-                    children: [
-                      // Background color
-                      AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: Container(
-                          color: Color(widget.content.colorCode),
-                          child: Center(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Container(
+                      foregroundDecoration: focusRing(colors, _focused),
+                      decoration: BoxDecoration(
+                        color: posterTint(colors, content.colorCode),
+                        borderRadius: BorderRadius.circular(AppSpacing.radius),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        children: [
+                          Center(
                             child: Icon(
-                              Icons.play_circle_outline,
-                              color: Colors.white.withValues(alpha: 0.5),
-                              size: 48,
+                              Icons.play_arrow_rounded,
+                              color: colors.onSurface.withValues(alpha: 0.35),
+                              size: 44,
                             ),
                           ),
-                        ),
-                      ),
-                      // Gradient overlay
-                      Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.7),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Title and rating
-                      Positioned(
-                        left: 8,
-                        right: 8,
-                        bottom: progress > 0 ? 14 : 8,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              widget.content.title,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.star,
-                                  color: Colors.amber,
-                                  size: 12,
+                          if (progress > 0)
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: colors.surface.withValues(
+                                  alpha: 0.6,
                                 ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  widget.content.rating,
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 11,
+                                minHeight: 4,
+                              ),
+                            ),
+                          if (content.isNew)
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: _Badge(
+                                text: 'NEW',
+                                background: colors.primary,
+                                foreground: colors.onPrimary,
+                              ),
+                            ),
+                          if (content.isHD && !content.isNew)
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: _Badge(
+                                text: 'HD',
+                                background: colors.surface.withValues(
+                                  alpha: 0.8,
+                                ),
+                                foreground: colors.onSurface,
+                              ),
+                            ),
+                          if (_focused)
+                            Positioned(
+                              top: 6,
+                              right: 6,
+                              child: GestureDetector(
+                                onTap: () => context
+                                    .read<FavoritesProvider>()
+                                    .toggleFavorite(content),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: colors.surface.withValues(
+                                      alpha: 0.8,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    isFav
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: isFav
+                                        ? colors.primary
+                                        : colors.onSurface,
+                                    size: 18,
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ],
-                        ),
+                        ],
                       ),
-                      // Progress bar
-                      if (progress > 0)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.2,
-                            ),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Colors.red,
-                            ),
-                            minHeight: 3,
-                          ),
-                        ),
-                      // NEW badge
-                      if (widget.content.isNew)
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: _Badge(text: 'NEW', color: Colors.purple),
-                        ),
-                      // HD badge
-                      if (widget.content.isHD && !widget.content.isNew)
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: _Badge(text: 'HD', color: Colors.black54),
-                        ),
-                      // Favorite button (shown when focused)
-                      if (_focused)
-                        Positioned(
-                          top: 6,
-                          right: 6,
-                          child: GestureDetector(
-                            onTap: () => context
-                                .read<FavoritesProvider>()
-                                .toggleFavorite(widget.content),
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                isFav ? Icons.favorite : Icons.favorite_border,
-                                color: isFav ? Colors.red : Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Text(
+                    content.title,
+                    style: context.text.titleMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${content.year}  ·  ${content.rating}',
+                    style: context.text.labelMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
           ),
         ),
+      ),
     );
   }
 }
 
 class _Badge extends StatelessWidget {
   final String text;
-  final Color color;
+  final Color background;
+  final Color foreground;
 
-  const _Badge({required this.text, required this.color});
+  const _Badge({
+    required this.text,
+    required this.background,
+    required this.foreground,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color,
+        color: background,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
+        style: TextStyle(
+          color: foreground,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
         ),
       ),
     );

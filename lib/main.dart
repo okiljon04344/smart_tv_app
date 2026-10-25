@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'data/sample_data.dart';
+import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
-import 'firebase_options.dart';
-import 'services/locale_provider.dart';
-import 'services/favorites_provider.dart';
 import 'services/auth_provider.dart';
 import 'services/catalog_provider.dart';
-import 'data/sample_data.dart';
+import 'services/favorites_provider.dart';
+import 'services/locale_provider.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,21 +20,19 @@ void main() async {
     DeviceOrientation.landscapeRight,
   ]);
 
-  // Android TV remote sends KeyUpEvent for Select/OK without a prior KeyDownEvent.
-  // This causes Flutter assertion errors and breaks all key handling.
-  // We suppress this specific error so navigation continues working.
+  // Some Android TV remotes send a KeyUpEvent for Select/OK without a matching
+  // KeyDownEvent, which trips a framework assertion and stops key handling.
+  // Swallow exactly that error and forward everything else.
   final void Function(FlutterErrorDetails)? originalOnError =
       FlutterError.onError;
   FlutterError.onError = (FlutterErrorDetails details) {
     final msg = details.exceptionAsString();
     if (msg.contains('KeyUpEvent is dispatched') ||
         msg.contains('_pressedKeys.containsKey')) {
-      return; // silently ignore TV remote key sync errors
+      return;
     }
     originalOnError?.call(details);
   };
-
-  // Keep key events unconsumed globally so focused widgets can handle Select/OK.
 
   try {
     await Firebase.initializeApp(
@@ -76,16 +75,7 @@ class SmartTvApp extends StatelessWidget {
     return MaterialApp(
       title: 'Smart TV',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0A0A0F),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6C63FF),
-          brightness: Brightness.dark,
-        ),
-        fontFamily: 'Roboto',
-        focusColor: const Color(0xFF6C63FF),
-      ),
+      theme: buildAppTheme(),
       builder: (context, child) {
         final media = MediaQuery.of(context);
         return MediaQuery(
@@ -110,12 +100,7 @@ class _AuthGate extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     if (auth.isBusy && !auth.isSignedIn) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF0A0A0F),
-        body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return auth.isSignedIn ? const HomeScreen() : const LoginScreen();
   }

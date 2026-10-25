@@ -9,6 +9,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../models/content.dart';
 import '../services/favorites_provider.dart';
 import '../services/locale_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/tv_key_helper.dart';
 
 const _sampleVideos = [
@@ -26,8 +27,6 @@ const _sampleVideos = [
 
 bool _isTvActivateEvent(KeyEvent event) =>
     isTvActivateEvent(event, includeMediaPlayPause: true);
-
-bool _isTvBackEvent(KeyEvent event) => isTvBackEvent(event);
 
 class PlayerScreen extends StatefulWidget {
   final Content content;
@@ -249,7 +248,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     return Focus(
       autofocus: true,
       onKeyEvent: (node, event) {
-        if (_isTvBackEvent(event)) {
+        if (isTvBackEvent(event)) {
           final now = DateTime.now().millisecondsSinceEpoch;
           if (now - _lastBackPopMs < 250) {
             return KeyEventResult.handled;
@@ -317,15 +316,16 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget _buildVideo() {
     if (_hasError) {
       final l = Provider.of<LocaleProvider>(context, listen: false);
+      final muted = context.colors.onSurfaceVariant;
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.wifi_off, color: Colors.white54, size: 64),
+            Icon(Icons.wifi_off, color: muted, size: 64),
             const SizedBox(height: 16),
             Text(
               l.t('player_error'),
-              style: const TextStyle(color: Colors.white54, fontSize: 18),
+              style: context.text.bodyLarge?.copyWith(color: muted),
             ),
           ],
         ),
@@ -333,9 +333,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
 
     if (!_isInitialized) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_isYoutube && _youtubeController != null) {
@@ -345,7 +343,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           child: YoutubePlayer(
             controller: _youtubeController!,
             showVideoProgressIndicator: false,
-            progressIndicatorColor: const Color(0xFF6C63FF),
+            progressIndicatorColor: context.colors.primary,
           ),
         ),
       );
@@ -364,10 +362,12 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildControls(BuildContext context) {
     final c = widget.content;
+    final colors = context.colors;
     final isPlaying = _isPlaying;
     final position = _currentPosition;
     final duration = _totalDuration;
 
+    // The scrim keeps the text readable over any video frame.
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -397,19 +397,11 @@ class _PlayerScreenState extends State<PlayerScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        c.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text(c.title, style: context.text.titleLarge),
                       Text(
                         c.subtitle,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 13,
+                        style: context.text.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -421,15 +413,13 @@ class _PlayerScreenState extends State<PlayerScreen>
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white38),
+                    border: Border.all(color: colors.onSurfaceVariant),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     _isYoutube ? 'YOUTUBE' : '4K HDR',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
+                    style: context.text.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
                       letterSpacing: 1,
                     ),
                   ),
@@ -442,41 +432,24 @@ class _PlayerScreenState extends State<PlayerScreen>
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 28),
             child: Column(
               children: [
-                SliderTheme(
-                  data: const SliderThemeData(
-                    trackHeight: 4,
-                    thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
-                    overlayShape: RoundSliderOverlayShape(overlayRadius: 16),
-                    activeTrackColor: Color(0xFF6C63FF),
-                    inactiveTrackColor: Colors.white24,
-                    thumbColor: Colors.white,
-                    overlayColor: Colors.white24,
-                  ),
-                  child: Slider(
-                    value: _progress,
-                    onChanged: (v) {
-                      if (!_isInitialized) return;
-                      final target = Duration(
-                        milliseconds: (v * duration.inMilliseconds).round(),
-                      );
-                      if (_isYoutube) {
-                        _youtubeController?.seekTo(target);
-                      } else {
-                        _videoController?.seekTo(target);
-                      }
-                    },
-                  ),
+                Slider(
+                  value: _progress,
+                  onChanged: (v) {
+                    if (!_isInitialized) return;
+                    final target = Duration(
+                      milliseconds: (v * duration.inMilliseconds).round(),
+                    );
+                    if (_isYoutube) {
+                      _youtubeController?.seekTo(target);
+                    } else {
+                      _videoController?.seekTo(target);
+                    }
+                  },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Row(
                   children: [
-                    Text(
-                      _fmt(position),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 14,
-                      ),
-                    ),
+                    Text(_fmt(position), style: context.text.bodyMedium),
                     const Spacer(),
                     _ControlBtn(
                       icon: Icons.replay_10,
@@ -498,30 +471,26 @@ class _PlayerScreenState extends State<PlayerScreen>
                           return GestureDetector(
                             onTap: _togglePlay,
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 60,
-                              height: 60,
+                              duration: const Duration(milliseconds: 150),
+                              width: 64,
+                              height: 64,
+                              foregroundDecoration: focused
+                                  ? BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: colors.onSurface,
+                                        width: AppSpacing.focusRingWidth,
+                                      ),
+                                    )
+                                  : null,
                               decoration: BoxDecoration(
-                                color: focused
-                                    ? Colors.white
-                                    : const Color(0xFF6C63FF),
+                                color: colors.primary,
                                 shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: focused
-                                        ? Colors.white.withValues(alpha: 0.4)
-                                        : const Color(
-                                            0xFF6C63FF,
-                                          ).withValues(alpha: 0.5),
-                                    blurRadius: 20,
-                                    spreadRadius: 3,
-                                  ),
-                                ],
                               ),
                               child: Icon(
                                 isPlaying ? Icons.pause : Icons.play_arrow,
-                                color: focused ? Colors.black : Colors.white,
-                                size: 30,
+                                color: colors.onPrimary,
+                                size: 34,
                               ),
                             ),
                           );
@@ -536,9 +505,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                     const Spacer(),
                     Text(
                       _fmt(duration),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 14,
+                      style: context.text.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -559,6 +527,7 @@ class _NavBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Focus(
       onKeyEvent: (node, event) {
         if (_isTvActivateEvent(event)) {
@@ -573,20 +542,14 @@ class _NavBtn extends StatelessWidget {
           return GestureDetector(
             onTap: onTap,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.all(10),
+              foregroundDecoration: focusRing(colors, focused),
               decoration: BoxDecoration(
-                color: focused
-                    ? Colors.white.withValues(alpha: 0.25)
-                    : Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: focused
-                      ? Colors.white.withValues(alpha: 0.7)
-                      : Colors.transparent,
-                ),
+                color: colors.surfaceContainerHigh.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(AppSpacing.radius),
               ),
-              child: Icon(icon, color: Colors.white, size: 22),
+              child: Icon(icon, color: colors.onSurface, size: 24),
             ),
           );
         },
@@ -602,6 +565,7 @@ class _ControlBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Focus(
       onKeyEvent: (node, event) {
         if (_isTvActivateEvent(event)) {
@@ -616,21 +580,19 @@ class _ControlBtn extends StatelessWidget {
           return GestureDetector(
             onTap: onTap,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: focused
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: focused
-                      ? Colors.white.withValues(alpha: 0.6)
-                      : Colors.transparent,
-                ),
-              ),
-              child: Icon(icon, color: Colors.white, size: 28),
+              duration: const Duration(milliseconds: 150),
+              width: 52,
+              height: 52,
+              foregroundDecoration: focused
+                  ? BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colors.onSurface,
+                        width: AppSpacing.focusRingWidth,
+                      ),
+                    )
+                  : null,
+              child: Icon(icon, color: colors.onSurface, size: 30),
             ),
           );
         },

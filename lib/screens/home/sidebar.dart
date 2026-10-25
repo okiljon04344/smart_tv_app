@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../../theme/app_theme.dart';
 import '../../utils/tv_key_helper.dart';
 
 class NavItemData {
@@ -7,8 +9,6 @@ class NavItemData {
   final String label;
   const NavItemData(this.icon, this.label);
 }
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 class Sidebar extends StatelessWidget {
   final List<NavItemData> navItems;
@@ -26,28 +26,18 @@ class Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
-      width: 102,
+      width: 112,
       decoration: BoxDecoration(
-        color: const Color(0xFF0E0E1A),
-        border: Border(
-          right: BorderSide(
-            color: Colors.white.withValues(alpha: 0.07),
-            width: 1,
-          ),
-        ),
+        color: colors.surfaceContainer,
+        border: Border(right: BorderSide(color: colors.outline)),
       ),
       child: Column(
         children: [
-          const SizedBox(height: 36),
-          _buildLogo(),
+          const SizedBox(height: 32),
+          Icon(Icons.tv, color: colors.onSurface, size: 32),
           const SizedBox(height: 24),
-          Container(
-            height: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 14),
-            color: Colors.white.withValues(alpha: 0.06),
-          ),
-          const SizedBox(height: 8),
           Expanded(
             child: ListView.builder(
               padding: EdgeInsets.zero,
@@ -61,57 +51,23 @@ class Sidebar extends StatelessWidget {
               ),
             ),
           ),
-          _buildProfile(),
-          const SizedBox(height: 20),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHigh,
+              shape: BoxShape.circle,
+              border: Border.all(color: colors.outline),
+            ),
+            child: Icon(
+              Icons.person_outline,
+              color: colors.onSurfaceVariant,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return const Column(
-      children: [
-        Icon(Icons.tv, color: Color(0xFF6C63FF), size: 34),
-        SizedBox(height: 4),
-        Text(
-          'SMART\nTV',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Color(0xFF6C63FF),
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.5,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProfile() {
-    return Column(
-      children: [
-        Container(
-          height: 1,
-          margin: const EdgeInsets.symmetric(horizontal: 14),
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: const Color(0xFF6C63FF),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF6C63FF).withValues(alpha: 0.35),
-                blurRadius: 12,
-              ),
-            ],
-          ),
-          child: const Icon(Icons.person, color: Colors.white, size: 22),
-        ),
-      ],
     );
   }
 }
@@ -138,12 +94,12 @@ class _SidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
       child: Focus(
         autofocus: autofocus,
         onKeyEvent: (node, event) {
-          // ArrowRight → move into content
           if (event is KeyDownEvent &&
               event.logicalKey == LogicalKeyboardKey.arrowRight) {
             _select();
@@ -158,51 +114,61 @@ class _SidebarItem extends StatelessWidget {
         child: Builder(
           builder: (ctx) {
             final focused = Focus.of(ctx).hasFocus;
+            final emphasised = focused || isSelected;
             return GestureDetector(
               onTap: _select,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(vertical: 11),
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                foregroundDecoration: focusRing(colors, focused),
                 decoration: BoxDecoration(
-                  color: focused
-                      ? const Color(0xFF6C63FF).withValues(alpha: 0.2)
-                      : isSelected
-                      ? const Color(0xFF6C63FF).withValues(alpha: 0.12)
+                  color: emphasised
+                      ? colors.surfaceContainerHigh
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: focused
-                        ? const Color(0xFF6C63FF)
-                        : isSelected
-                        ? const Color(0xFF6C63FF).withValues(alpha: 0.5)
-                        : Colors.transparent,
-                    width: 1.5,
-                  ),
+                  borderRadius: BorderRadius.circular(AppSpacing.radius),
                 ),
-                child: Column(
+                child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    Icon(
-                      data.icon,
-                      color: focused || isSelected
-                          ? const Color(0xFF6C63FF)
-                          : Colors.white.withValues(alpha: 0.4),
-                      size: 24,
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      data.label,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: focused || isSelected
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.35),
-                        fontSize: 9.5,
-                        fontWeight: focused || isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                    if (isSelected)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          width: 3,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: colors.primary,
+                            borderRadius: const BorderRadius.horizontal(
+                              right: Radius.circular(2),
+                            ),
+                          ),
+                        ),
                       ),
+                    Column(
+                      children: [
+                        Icon(
+                          data.icon,
+                          color: emphasised
+                              ? colors.onSurface
+                              : colors.onSurfaceVariant,
+                          size: 26,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          data.label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.text.labelMedium?.copyWith(
+                            color: emphasised
+                                ? colors.onSurface
+                                : colors.onSurfaceVariant,
+                            fontWeight: emphasised
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

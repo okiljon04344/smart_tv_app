@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_provider.dart';
+import '../theme/app_theme.dart';
 
 bool isAdminSupportedPlatform(BuildContext context) {
   if (kIsWeb) {
@@ -13,7 +14,7 @@ bool isAdminSupportedPlatform(BuildContext context) {
   final platform = defaultTargetPlatform;
   if (platform == TargetPlatform.android || platform == TargetPlatform.iOS) {
     final size = MediaQuery.of(context).size;
-    // Keep admin access for phone-sized layouts only; block TV/tablet screens.
+    // Phone-sized layouts only; TV and tablet screens are blocked.
     return size.width < 600 && size.shortestSide < 600;
   }
   return false;
@@ -59,7 +60,6 @@ class _AdminScreenState extends State<AdminScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1B1D2D),
           title: Text(existing == null ? 'Add video' : 'Update video'),
           content: SizedBox(
             width: 420,
@@ -141,11 +141,9 @@ class _AdminScreenState extends State<AdminScreen> {
 
     if (!allowed) {
       return const Scaffold(
-        backgroundColor: Color(0xFF0A0A0F),
         body: Center(
           child: Text(
             'Admin panel faqat admin account va telefon/chrome uchun.',
-            style: TextStyle(color: Colors.white70),
             textAlign: TextAlign.center,
           ),
         ),
@@ -153,10 +151,8 @@ class _AdminScreenState extends State<AdminScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
       appBar: AppBar(
         title: const Text('Admin Panel'),
-        backgroundColor: const Color(0xFF141624),
         actions: [
           IconButton(
             onPressed: () => _upsertVideo(),
@@ -169,28 +165,21 @@ class _AdminScreenState extends State<AdminScreen> {
         stream: _moviesRef.onValue,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
             return Center(
               child: Text(
                 'Xatolik: ${snapshot.error}',
-                style: const TextStyle(color: Colors.redAccent),
+                style: TextStyle(color: context.colors.error),
               ),
             );
           }
 
           final value = snapshot.data?.snapshot.value;
           if (value is! Map || value.isEmpty) {
-            return const Center(
-              child: Text(
-                'Video topilmadi',
-                style: TextStyle(color: Colors.white70),
-              ),
-            );
+            return const Center(child: Text('Video topilmadi'));
           }
 
           final entries =
@@ -209,25 +198,22 @@ class _AdminScreenState extends State<AdminScreen> {
                   ? raw.map((k, v) => MapEntry(k.toString(), v))
                   : <String, Object?>{};
               return ListTile(
-                title: Text(
-                  '${map['title'] ?? 'Video'} (#$id)',
-                  style: const TextStyle(color: Colors.white),
-                ),
+                title: Text('${map['title'] ?? 'Video'} (#$id)'),
                 subtitle: Text(
-                  '${map['genre'] ?? ''} • ${map['year'] ?? ''}',
-                  style: const TextStyle(color: Colors.white60),
+                  '${map['genre'] ?? ''} \u00b7 ${map['year'] ?? ''}',
+                  style: TextStyle(color: context.colors.onSurfaceVariant),
                 ),
                 trailing: Wrap(
                   spacing: 8,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.white70),
+                      icon: const Icon(Icons.edit),
                       onPressed: () => _upsertVideo(existing: map),
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_outline,
-                        color: Colors.redAccent,
+                        color: context.colors.error,
                       ),
                       onPressed: () => _deleteVideo(id),
                     ),

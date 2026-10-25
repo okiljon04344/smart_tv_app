@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../data/sample_data.dart';
-import '../../services/locale_provider.dart';
-import '../../services/favorites_provider.dart';
-import '../../widgets/content_card.dart';
 
-// ─── My List Screen ───────────────────────────────────────────────────────────
+import '../../data/sample_data.dart';
+import '../../models/content.dart';
+import '../../services/favorites_provider.dart';
+import '../../services/locale_provider.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/content_card.dart';
 
 class MyListScreen extends StatelessWidget {
   const MyListScreen({super.key});
@@ -14,23 +15,17 @@ class MyListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = Provider.of<LocaleProvider>(context);
     final favorites = context.watch<FavoritesProvider>();
+    final colors = context.colors;
     final all = allContent;
     final favList = favorites.getFavorites(all);
     final continueList = favorites.getContinueWatching(all);
 
     return Padding(
-      padding: const EdgeInsets.all(36),
+      padding: const EdgeInsets.all(AppSpacing.screenPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            l.t('nav_my_list'),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(l.t('nav_my_list'), style: context.text.headlineMedium),
           const SizedBox(height: 24),
           Expanded(
             child: favList.isEmpty && continueList.isEmpty
@@ -40,15 +35,14 @@ class MyListScreen extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.favorite_border,
-                          color: Colors.white.withValues(alpha: 0.2),
-                          size: 72,
+                          color: colors.onSurfaceVariant.withValues(alpha: 0.5),
+                          size: 64,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           l.t('my_list_empty'),
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            fontSize: 16,
+                          style: context.text.bodyLarge?.copyWith(
+                            color: colors.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -57,55 +51,58 @@ class MyListScreen extends StatelessWidget {
                 : ListView(
                     children: [
                       if (continueList.isNotEmpty) ...[
-                        Text(
-                          l.t('continue_watching'),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        _Section(
+                          title: l.t('continue_watching'),
+                          items: continueList,
+                          autofocusFirst: true,
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 175,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: continueList.length,
-                            itemBuilder: (ctx, i) => ContentCard(
-                              content: continueList[i],
-                              autofocus: i == 0,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                       ],
-                      if (favList.isNotEmpty) ...[
-                        Text(
-                          l.t('my_favorites'),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      if (favList.isNotEmpty)
+                        _Section(
+                          title: l.t('my_favorites'),
+                          items: favList,
+                          autofocusFirst: continueList.isEmpty,
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 175,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: favList.length,
-                            itemBuilder: (ctx, i) => ContentCard(
-                              content: favList[i],
-                              autofocus: continueList.isEmpty && i == 0,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  final String title;
+  final List<Content> items;
+  final bool autofocusFirst;
+
+  const _Section({
+    required this.title,
+    required this.items,
+    required this.autofocusFirst,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: context.text.titleLarge),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: ContentCard.rowHeight,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: items.length,
+            itemBuilder: (ctx, i) => ContentCard(
+              content: items[i],
+              autofocus: autofocusFirst && i == 0,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../data/sample_data.dart';
 import '../../models/content.dart';
 import '../../services/locale_provider.dart';
-import '../../utils/tv_key_helper.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/content_card.dart';
+import '../../widgets/tv_focusable.dart';
 
-// ─── Search Screen ────────────────────────────────────────────────────────────
+const _popularTags = [
+  'Sci-Fi',
+  'Drama',
+  'Animation',
+  'Comedy',
+  'Horror',
+  'Sport',
+];
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -18,6 +27,12 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   String _query = '';
   final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   List<Content> get _results {
     if (_query.isEmpty) return [];
@@ -32,139 +47,87 @@ class _SearchScreenState extends State<SearchScreen> {
         .toList();
   }
 
+  void _searchFor(String tag) {
+    _controller.text = tag;
+    setState(() => _query = tag);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = Provider.of<LocaleProvider>(context);
+    final colors = context.colors;
+    final results = _results;
+
     return Padding(
-      padding: const EdgeInsets.all(36),
+      padding: const EdgeInsets.all(AppSpacing.screenPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            l.t('search_title'),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(l.t('search_title'), style: context.text.headlineMedium),
           const SizedBox(height: 24),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-            ),
-            child: TextField(
-              controller: _controller,
-              autofocus: true,
-              style: const TextStyle(color: Colors.white, fontSize: 18),
-              decoration: InputDecoration(
-                hintText: l.t('search_hint'),
-                hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.35),
-                ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: Colors.white.withValues(alpha: 0.5),
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            style: context.text.bodyLarge,
+            decoration: InputDecoration(
+              hintText: l.t('search_hint'),
+              prefixIcon: Icon(Icons.search, color: colors.onSurfaceVariant),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 18,
               ),
-              onChanged: (v) => setState(() => _query = v),
             ),
+            onChanged: (v) => setState(() => _query = v),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 32),
           if (_query.isEmpty) ...[
             Text(
               l.t('search_popular_tags'),
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 13,
+              style: context.text.labelMedium?.copyWith(
+                color: colors.onSurfaceVariant,
                 letterSpacing: 1,
               ),
             ),
             const SizedBox(height: 12),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children:
-                  ['Sci-Fi', 'Drama', 'Animation', 'Comedy', 'Horror', 'Sport']
-                      .map(
-                        (tag) => Focus(
-                          onKeyEvent: (node, event) {
-                            if (isTvActivateEvent(event)) {
-                              _controller.text = tag;
-                              setState(() => _query = tag);
-                              return KeyEventResult.handled;
-                            }
-                            return KeyEventResult.ignored;
-                          },
-                          child: Builder(
-                            builder: (ctx) {
-                              final focused = Focus.of(ctx).hasFocus;
-                              return GestureDetector(
-                                onTap: () {
-                                  _controller.text = tag;
-                                  setState(() => _query = tag);
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 150),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: focused
-                                        ? const Color(0xFF6C63FF)
-                                        : Colors.white.withValues(alpha: 0.07),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: focused
-                                          ? Colors.white
-                                          : Colors.white.withValues(
-                                              alpha: 0.12,
-                                            ),
-                                      width: focused ? 2 : 1,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    tag,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: focused
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      )
-                      .toList(),
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final tag in _popularTags)
+                  TvFocusable(
+                    onActivate: () => _searchFor(tag),
+                    builder: (context, focused) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      foregroundDecoration: focusRing(colors, focused),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(AppSpacing.radius),
+                        border: Border.all(color: colors.outline),
+                      ),
+                      child: Text(tag, style: context.text.labelLarge),
+                    ),
+                  ),
+              ],
             ),
           ] else ...[
             Text(
-              l.t('search_results', n: '${_results.length}'),
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 13,
+              l.t('search_results', n: '${results.length}'),
+              style: context.text.labelMedium?.copyWith(
+                color: colors.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             SizedBox(
-              height: 175,
+              height: ContentCard.rowHeight,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: _results.length,
+                itemCount: results.length,
                 itemBuilder: (ctx, i) =>
-                    ContentCard(content: _results[i], autofocus: i == 0),
+                    ContentCard(content: results[i], autofocus: i == 0),
               ),
             ),
           ],

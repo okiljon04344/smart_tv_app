@@ -1,17 +1,21 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../data/sample_data.dart';
 import '../../models/content.dart';
+import '../../services/catalog_provider.dart';
+import '../../services/favorites_provider.dart';
+import '../../services/locale_provider.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/content_card.dart';
+import '../../widgets/tv_button.dart';
+import '../../widgets/tv_focusable.dart';
 import '../detail_screen.dart';
 import '../player_screen.dart';
-import '../../services/catalog_provider.dart';
-import '../../services/locale_provider.dart';
-import '../../services/favorites_provider.dart';
-import '../../utils/tv_key_helper.dart';
-import '../../widgets/content_card.dart';
 
-// ─── Main Content ─────────────────────────────────────────────────────────────
+const double _hPadding = AppSpacing.screenPadding;
 
 class MainContent extends StatefulWidget {
   final int navIndex;
@@ -36,24 +40,21 @@ class _MainContentState extends State<MainContent> {
   static const _banners = [
     _BannerData(
       title: 'Galaktika Sargardoni',
-      subtitle: 'Sci-Fi  •  2024  •  2s 18d  •  ★ 8.9',
+      subtitle: 'Sci-Fi  ·  2024  ·  2s 18d  ·  8.9',
       badgeKey: 'badge_recommended',
-      colors: [Color(0xFF2E1A4E), Color(0xFF0D47A1)],
-      icon: Icons.rocket_launch,
+      colorCode: 0xFF1A237E,
     ),
     _BannerData(
       title: 'Poytaxt Siri',
-      subtitle: 'Drama  •  2024  •  Mavsum 3  •  ★ 9.3',
+      subtitle: 'Drama  ·  2024  ·  Mavsum 3  ·  9.3',
       badgeKey: 'badge_new_season',
-      colors: [Color(0xFF3E2723), Color(0xFF4A1942)],
-      icon: Icons.theater_comedy,
+      colorCode: 0xFF880E4F,
     ),
     _BannerData(
       title: "Yulduz Yo'li",
-      subtitle: 'Animatsiya  •  2025  •  1s 35d  •  ★ 9.1',
+      subtitle: 'Animatsiya  ·  2025  ·  1s 35d  ·  9.1',
       badgeKey: 'badge_top_rating',
-      colors: [Color(0xFF1B5E20), Color(0xFF004D40)],
-      icon: Icons.animation,
+      colorCode: 0xFF1B5E20,
     ),
   ];
 
@@ -78,7 +79,9 @@ class _MainContentState extends State<MainContent> {
     final l = Provider.of<LocaleProvider>(context, listen: false);
     final catalog = context.watch<CatalogProvider>();
     final favorites = context.watch<FavoritesProvider>();
+    final colors = context.colors;
     final continueList = favorites.getContinueWatching(allContent);
+    final showContinue = continueList.isNotEmpty && widget.navIndex == 0;
     final navTitles = [
       l.t('nav_home'),
       l.t('nav_movies'),
@@ -92,24 +95,21 @@ class _MainContentState extends State<MainContent> {
         if (catalog.isOffline)
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            margin: const EdgeInsets.fromLTRB(_hPadding, 12, _hPadding, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF3A2B00),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFFFC107)),
+              color: colors.surfaceContainer,
+              borderRadius: BorderRadius.circular(AppSpacing.radius),
+              border: Border.all(color: colors.outline),
             ),
             child: Row(
               children: [
-                const Icon(Icons.wifi_off, color: Color(0xFFFFC107), size: 18),
-                const SizedBox(width: 8),
+                Icon(Icons.wifi_off, color: colors.primary, size: 20),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Offline mode: local catalog is shown',
-                    style: const TextStyle(
-                      color: Color(0xFFFFE082),
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: context.text.bodyMedium,
                   ),
                 ),
               ],
@@ -119,27 +119,19 @@ class _MainContentState extends State<MainContent> {
           title: navTitles[widget.navIndex],
           onSearchTap: widget.onOpenSearch,
         ),
-        _FeaturedBanner(
-          banners: _banners,
-          currentIndex: _bannerIndex,
-          onChanged: (i) => setState(() => _bannerIndex = i),
-        ),
+        _FeaturedBanner(banners: _banners, currentIndex: _bannerIndex),
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.only(bottom: 30),
-            itemCount:
-                widget.categories.length +
-                (continueList.isNotEmpty && widget.navIndex == 0 ? 1 : 0),
+            padding: const EdgeInsets.only(bottom: 32),
+            itemCount: widget.categories.length + (showContinue ? 1 : 0),
             itemBuilder: (ctx, i) {
-              // Home ekranida birinchi bo'lib "Continue Watching" ko'rsatamiz
-              if (widget.navIndex == 0 && continueList.isNotEmpty) {
+              if (showContinue) {
                 if (i == 0) {
                   return _ContinueWatchingRow(items: continueList);
                 }
                 return _CategoryRow(
                   titleKey: widget.categories[i - 1].name,
                   items: widget.categories[i - 1].items,
-                  isFirst: false,
                 );
               }
               return _CategoryRow(
@@ -160,15 +152,17 @@ class CatalogLoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(color: Color(0xFF6C63FF)),
-          SizedBox(height: 12),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
           Text(
             'Loading catalog...',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: context.text.bodyMedium?.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -186,13 +180,10 @@ class CatalogErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, color: Colors.redAccent, size: 34),
-          const SizedBox(height: 8),
-          const Text(
-            'Catalog load failed',
-            style: TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          const SizedBox(height: 10),
+          Icon(Icons.error_outline, color: context.colors.error, size: 40),
+          const SizedBox(height: 12),
+          Text('Catalog load failed', style: context.text.bodyLarge),
+          const SizedBox(height: 16),
           ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
         ],
       ),
@@ -200,25 +191,19 @@ class CatalogErrorView extends StatelessWidget {
   }
 }
 
-// ─── Banner Data ──────────────────────────────────────────────────────────────
-
 class _BannerData {
   final String title;
   final String subtitle;
   final String badgeKey;
-  final List<Color> colors;
-  final IconData icon;
+  final int colorCode;
 
   const _BannerData({
     required this.title,
     required this.subtitle,
     required this.badgeKey,
-    required this.colors,
-    required this.icon,
+    required this.colorCode,
   });
 }
-
-// ─── Top Bar ─────────────────────────────────────────────────────────────────
 
 class _TopBar extends StatelessWidget {
   final String title;
@@ -228,30 +213,21 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: _hPadding, vertical: 16),
       child: Row(
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-          ),
+          Text(title, style: context.text.headlineMedium),
           const Spacer(),
-          _ClockWidget(),
-          const SizedBox(width: 16),
+          const _Clock(),
+          const SizedBox(width: 20),
           _IconBtn(Icons.search, onTap: onSearchTap),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           _IconBtn(
             Icons.notifications_outlined,
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('No new notifications'),
-                  backgroundColor: Color(0xFF6C63FF),
                   duration: Duration(seconds: 1),
                 ),
               );
@@ -263,22 +239,22 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _ClockWidget extends StatelessWidget {
+class _Clock extends StatelessWidget {
+  const _Clock();
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
       stream: Stream.periodic(const Duration(seconds: 1)),
       builder: (context, _) {
         final now = DateTime.now();
-        final t =
-            '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+        final hh = now.hour.toString().padLeft(2, '0');
+        final mm = now.minute.toString().padLeft(2, '0');
         return Text(
-          t,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.85),
-            fontSize: 17,
-            fontWeight: FontWeight.w300,
-            letterSpacing: 2,
+          '$hh:$mm',
+          style: context.text.titleLarge?.copyWith(
+            color: context.colors.onSurfaceVariant,
+            fontWeight: FontWeight.w400,
           ),
         );
       },
@@ -293,197 +269,127 @@ class _IconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Focus(
-      onKeyEvent: (node, event) {
-        if (onTap != null && isTvActivateEvent(event)) {
-          onTap!();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Builder(
-        builder: (ctx) {
-          final focused = Focus.of(ctx).hasFocus;
-          return GestureDetector(
-            onTap: onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                color: focused
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                icon,
-                color: focused ? Colors.black : Colors.white,
-                size: 20,
-              ),
-            ),
-          );
-        },
+    final colors = context.colors;
+    return TvFocusable(
+      onActivate: onTap,
+      builder: (context, focused) => AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(10),
+        foregroundDecoration: focusRing(colors, focused),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(AppSpacing.radius),
+        ),
+        child: Icon(icon, color: colors.onSurface, size: 24),
       ),
     );
   }
 }
 
-// ─── Featured Banner ──────────────────────────────────────────────────────────
-
 class _FeaturedBanner extends StatelessWidget {
   final List<_BannerData> banners;
   final int currentIndex;
-  final ValueChanged<int> onChanged;
 
-  const _FeaturedBanner({
-    required this.banners,
-    required this.currentIndex,
-    required this.onChanged,
-  });
+  const _FeaturedBanner({required this.banners, required this.currentIndex});
+
+  void _watch(BuildContext context) {
+    final items = allContent;
+    if (items.isEmpty) return;
+    final item = items[currentIndex % items.length];
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PlayerScreen(content: item)),
+    );
+  }
+
+  void _save(BuildContext context, LocaleProvider l) {
+    final items = allContent;
+    if (items.isEmpty) return;
+    final item = items[currentIndex % items.length];
+    context.read<FavoritesProvider>().toggleFavorite(item);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("'${item.title}' ${l.t('added_to_list')}"),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = Provider.of<LocaleProvider>(context);
+    final colors = context.colors;
     final b = banners[currentIndex];
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 400),
       transitionBuilder: (child, anim) =>
           FadeTransition(opacity: anim, child: child),
       child: Container(
         key: ValueKey(currentIndex),
-        height: 210,
-        margin: const EdgeInsets.symmetric(horizontal: 28, vertical: 6),
+        height: 224,
+        margin: const EdgeInsets.symmetric(horizontal: _hPadding, vertical: 8),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: b.colors,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: b.colors[0].withValues(alpha: 0.35),
-              blurRadius: 28,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          color: posterTint(colors, b.colorCode),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Stack(
           children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  l.t(b.badgeKey).toUpperCase(),
+                  style: context.text.labelMedium?.copyWith(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(b.title, style: context.text.headlineMedium),
+                const SizedBox(height: 4),
+                Text(
+                  b.subtitle,
+                  style: context.text.bodyMedium?.copyWith(
+                    color: colors.onSurface.withValues(alpha: 0.75),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    TvButton(
+                      icon: Icons.play_arrow_rounded,
+                      label: l.t('btn_watch'),
+                      tone: TvButtonTone.primary,
+                      onTap: () => _watch(context),
+                    ),
+                    const SizedBox(width: 12),
+                    TvButton(
+                      icon: Icons.add,
+                      label: l.t('btn_save'),
+                      onTap: () => _save(context, l),
+                    ),
+                  ],
+                ),
+              ],
+            ),
             Positioned(
-              right: 36,
-              top: 0,
+              right: 0,
               bottom: 0,
-              child: Icon(
-                b.icon,
-                size: 150,
-                color: Colors.white.withValues(alpha: 0.05),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6C63FF),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Text(
-                      l.t(b.badgeKey),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    b.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    b.subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.65),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      _BannerBtn(
-                        icon: Icons.play_arrow,
-                        label: l.t('btn_watch'),
-                        isPrimary: true,
-                        onTap: () {
-                          final items = allContent;
-                          if (items.isEmpty) return;
-                          final item = items[currentIndex % items.length];
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PlayerScreen(content: item),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      _BannerBtn(
-                        icon: Icons.add,
-                        label: l.t('btn_save'),
-                        isPrimary: false,
-                        onTap: () {
-                          final items = allContent;
-                          if (items.isEmpty) return;
-                          final item = items[currentIndex % items.length];
-                          context.read<FavoritesProvider>().toggleFavorite(
-                            item,
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                "'${item.title}' ${l.t('added_to_list')}",
-                              ),
-                              backgroundColor: const Color(0xFF6C63FF),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              right: 28,
-              bottom: 18,
               child: Row(
                 children: List.generate(
                   banners.length,
                   (i) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 250),
                     margin: const EdgeInsets.only(left: 6),
                     width: i == currentIndex ? 20 : 6,
                     height: 6,
                     decoration: BoxDecoration(
                       color: i == currentIndex
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.3),
+                          ? colors.onSurface
+                          : colors.onSurface.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -497,81 +403,57 @@ class _FeaturedBanner extends StatelessWidget {
   }
 }
 
-class _BannerBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isPrimary;
-  final VoidCallback? onTap;
+class _RowHeader extends StatelessWidget {
+  final String title;
+  final Widget? trailing;
+  final String? count;
 
-  const _BannerBtn({
-    required this.icon,
-    required this.label,
-    required this.isPrimary,
-    this.onTap,
-  });
+  const _RowHeader({required this.title, this.count, this.trailing});
 
   @override
   Widget build(BuildContext context) {
-    return Focus(
-      onKeyEvent: (node, event) {
-        if (onTap != null && isTvActivateEvent(event)) {
-          onTap!();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Builder(
-        builder: (ctx) {
-          final focused = Focus.of(ctx).hasFocus;
-          return GestureDetector(
-            onTap: onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              decoration: BoxDecoration(
-                color: focused
-                    ? Colors.white
-                    : isPrimary
-                    ? const Color(0xFF6C63FF)
-                    : Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(9),
-                boxShadow: focused
-                    ? [
-                        BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          blurRadius: 14,
-                        ),
-                      ]
-                    : [],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    color: focused ? Colors.black : Colors.white,
-                    size: 19,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: focused ? Colors.black : Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(_hPadding, 16, _hPadding, 4),
+      child: Row(
+        children: [
+          Text(title, style: context.text.titleLarge),
+          if (count != null) ...[
+            const SizedBox(width: 10),
+            Text(
+              count!,
+              style: context.text.bodyMedium?.copyWith(
+                color: context.colors.onSurfaceVariant,
               ),
             ),
-          );
-        },
+          ],
+          const Spacer(),
+          ?trailing,
+        ],
       ),
     );
   }
 }
 
-// ─── Continue Watching Row ────────────────────────────────────────────────────
+class _CardList extends StatelessWidget {
+  final List<Content> items;
+  final bool autofocusFirst;
+
+  const _CardList({required this.items, this.autofocusFirst = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: ContentCard.rowHeight,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: _hPadding - 8),
+        itemCount: items.length,
+        itemBuilder: (ctx, i) =>
+            ContentCard(content: items[i], autofocus: autofocusFirst && i == 0),
+      ),
+    );
+  }
+}
 
 class _ContinueWatchingRow extends StatelessWidget {
   final List<Content> items;
@@ -583,43 +465,12 @@ class _ContinueWatchingRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(28, 20, 28, 12),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.play_circle_outline,
-                color: Color(0xFF6C63FF),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                l.t('continue_watching'),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 175,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            itemCount: items.length,
-            itemBuilder: (ctx, i) =>
-                ContentCard(content: items[i], autofocus: i == 0),
-          ),
-        ),
+        _RowHeader(title: l.t('continue_watching')),
+        _CardList(items: items, autofocusFirst: true),
       ],
     );
   }
 }
-
-// ─── Category Row ─────────────────────────────────────────────────────────────
 
 class _CategoryRow extends StatelessWidget {
   final String titleKey;
@@ -635,84 +486,36 @@ class _CategoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = Provider.of<LocaleProvider>(context);
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(28, 20, 28, 12),
-          child: Row(
-            children: [
-              Text(
-                l.t(titleKey),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+        _RowHeader(
+          title: l.t(titleKey),
+          count: '${items.length}',
+          trailing: TvFocusable(
+            onActivate: items.isEmpty
+                ? null
+                : () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DetailScreen(content: items.first),
+                    ),
+                  ),
+            builder: (context, focused) => AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              foregroundDecoration: focusRing(colors, focused),
+              child: Text(
+                l.t('see_all'),
+                style: context.text.labelLarge?.copyWith(
+                  color: focused ? colors.onSurface : colors.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                '${items.length}',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.35),
-                  fontSize: 14,
-                ),
-              ),
-              const Spacer(),
-              Focus(
-                onKeyEvent: (node, event) {
-                  if (items.isNotEmpty && isTvActivateEvent(event)) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DetailScreen(content: items.first),
-                      ),
-                    );
-                    return KeyEventResult.handled;
-                  }
-                  return KeyEventResult.ignored;
-                },
-                child: Builder(
-                  builder: (ctx) {
-                    final focused = Focus.of(ctx).hasFocus;
-                    return GestureDetector(
-                      onTap: items.isEmpty
-                          ? null
-                          : () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    DetailScreen(content: items.first),
-                              ),
-                            ),
-                      child: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 180),
-                        style: TextStyle(
-                          color: focused
-                              ? Colors.white
-                              : const Color(0xFF6C63FF).withValues(alpha: 0.7),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        child: Text(l.t('see_all')),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-        SizedBox(
-          height: 175,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            itemCount: items.length,
-            itemBuilder: (ctx, i) =>
-                ContentCard(content: items[i], autofocus: isFirst && i == 0),
-          ),
-        ),
+        _CardList(items: items, autofocusFirst: isFirst),
       ],
     );
   }

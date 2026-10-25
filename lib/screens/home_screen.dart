@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import '../data/sample_data.dart';
 import '../models/content.dart';
 import '../services/catalog_provider.dart';
 import '../services/locale_provider.dart';
 import '../utils/tv_key_helper.dart';
-import 'home/sidebar.dart';
 import 'home/browse_view.dart';
 import 'home/my_list_view.dart';
 import 'home/search_view.dart';
 import 'home/settings_view.dart';
-
-class AppSelectIntent extends Intent {
-  const AppSelectIntent();
-}
+import 'home/sidebar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _selectNav(int i) {
     setState(() => _selectedNavIndex = i);
-    // After nav change, move focus into content area
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _contentScope.requestFocus();
     });
@@ -102,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final navItems = _buildNavItems(l);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
       body: Row(
         children: [
           FocusScope(
@@ -130,7 +125,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                   return KeyEventResult.handled;
                 }
-                // Back / Escape → return to sidebar
                 if (isTvBackEvent(event)) {
                   _sidebarScope.requestFocus();
                   return KeyEventResult.handled;
@@ -144,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 transitionBuilder: (child, animation) {
                   return FadeTransition(opacity: animation, child: child);
                 },
-                // KeyedSubtree forces re-autofocus when switching sections
+                // The key makes autofocus run again when the section changes.
                 child: KeyedSubtree(
                   key: ValueKey(_selectedNavIndex),
                   child: _buildContent(),

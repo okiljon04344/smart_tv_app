@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../models/content.dart';
-import '../services/locale_provider.dart';
 import '../services/favorites_provider.dart';
+import '../services/locale_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/tv_key_helper.dart';
+import '../widgets/tv_button.dart';
+import '../widgets/tv_focusable.dart';
 import 'player_screen.dart';
 
-bool _isTvActivateEvent(KeyEvent event) => isTvActivateEvent(event);
-bool _isTvBackEvent(KeyEvent event) => isTvBackEvent(event);
+const _cast = ['Amir K', 'Dilnoza M', 'Sardor T', 'Malika N'];
 
 class DetailScreen extends StatefulWidget {
   final Content content;
@@ -53,7 +56,7 @@ class _DetailScreenState extends State<DetailScreen>
       canRequestFocus: false,
       skipTraversal: true,
       onKeyEvent: (node, event) {
-        if (_isTvBackEvent(event)) {
+        if (isTvBackEvent(event)) {
           final now = DateTime.now().millisecondsSinceEpoch;
           if (now - _lastBackPopMs < 250) {
             return KeyEventResult.handled;
@@ -65,16 +68,13 @@ class _DetailScreenState extends State<DetailScreen>
         return KeyEventResult.ignored;
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF0A0A0F),
         body: FadeTransition(
           opacity: _fadeAnim,
           child: SlideTransition(
             position: _slideAnim,
             child: Row(
               children: [
-                // Left: Poster
-                _buildPoster(c),
-                // Right: Info
+                _buildPoster(context, c),
                 Expanded(child: _buildInfo(context, c)),
               ],
             ),
@@ -84,102 +84,52 @@ class _DetailScreenState extends State<DetailScreen>
     );
   }
 
-  Widget _buildPoster(Content c) {
+  Widget _buildPoster(BuildContext context, Content c) {
+    final colors = context.colors;
     final width = (MediaQuery.sizeOf(context).width * 0.3)
         .clamp(300.0, 420.0)
         .toDouble();
     return Container(
       width: width,
       height: double.infinity,
-      decoration: BoxDecoration(
-        color: Color(c.colorCode),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(c.colorCode),
-            Color(c.colorCode).withValues(alpha: 0.6),
-            const Color(0xFF0A0A0F),
-          ],
-          stops: const [0, 0.6, 1],
-        ),
-      ),
+      color: posterTint(colors, c.colorCode),
       child: Stack(
         children: [
-          // Dekorativ pattern
-          Positioned.fill(child: CustomPaint(painter: _GridPainter())),
-          // Janr belgisi
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      width: 2,
-                    ),
-                  ),
-                  child: Icon(
-                    _genreIcon(c.genre),
-                    color: Colors.white,
-                    size: 56,
-                  ),
+                Icon(
+                  _genreIcon(c.genre),
+                  color: colors.onSurface.withValues(alpha: 0.6),
+                  size: 72,
                 ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    c.genre.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
+                const SizedBox(height: 16),
+                Text(
+                  c.genre.toUpperCase(),
+                  style: context.text.labelMedium?.copyWith(
+                    color: colors.onSurface.withValues(alpha: 0.75),
+                    letterSpacing: 2,
                   ),
                 ),
               ],
             ),
           ),
-          // Rating badge (top right)
           Positioned(
-            top: 30,
-            right: 20,
+            top: 32,
+            right: 24,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5C518),
-                borderRadius: BorderRadius.circular(8),
+                color: colors.surface.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.star, color: Colors.black, size: 16),
+                  Icon(Icons.star_rounded, color: colors.primary, size: 18),
                   const SizedBox(width: 4),
-                  Text(
-                    c.rating,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
+                  Text(c.rating, style: context.text.labelLarge),
                 ],
               ),
             ),
@@ -192,148 +142,91 @@ class _DetailScreenState extends State<DetailScreen>
   Widget _buildInfo(BuildContext context, Content c) {
     final l = Provider.of<LocaleProvider>(context);
     final favorites = context.watch<FavoritesProvider>();
+    final colors = context.colors;
     final isFav = favorites.isFavorite(c.id);
     final progress = favorites.getProgress(c.id);
+    final muted = context.text.bodyLarge?.copyWith(
+      color: colors.onSurfaceVariant,
+    );
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(40, 20, 40, 20),
+      padding: const EdgeInsets.fromLTRB(48, 24, 48, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Back button
-          Focus(
-            autofocus: false,
-            onKeyEvent: (node, event) {
-              if (_isTvActivateEvent(event)) {
-                Navigator.pop(context);
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            },
-            child: Builder(
-              builder: (ctx) {
-                final focused = Focus.of(ctx).hasFocus;
-                return GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: focused
-                          ? Colors.white.withValues(alpha: 0.15)
-                          : Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: focused
-                            ? Colors.white.withValues(alpha: 0.6)
-                            : Colors.white.withValues(alpha: 0.15),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.arrow_back,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          l.t('btn_back'),
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+          TvFocusable(
+            onActivate: () => Navigator.pop(context),
+            builder: (context, focused) => AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              foregroundDecoration: focusRing(colors, focused),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainer,
+                borderRadius: BorderRadius.circular(AppSpacing.radius),
+                border: Border.all(color: colors.outline),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_back, color: colors.onSurface, size: 20),
+                  const SizedBox(width: 8),
+                  Text(l.t('btn_back'), style: context.text.bodyMedium),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 20),
-          // Title
+          const SizedBox(height: 24),
           Text(
             c.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
+            style: context.text.headlineMedium?.copyWith(
+              fontSize: 40,
               height: 1.2,
             ),
           ),
-          const SizedBox(height: 12),
-          // Meta info
-          Row(
-            children: [
-              _MetaBadge(label: c.year, color: const Color(0xFF6C63FF)),
-              const SizedBox(width: 10),
-              _MetaBadge(label: c.duration, color: Colors.white24),
-              const SizedBox(width: 10),
-              _MetaBadge(label: c.genre, color: Colors.white24),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            '${c.year}  \u00b7  ${c.duration}  \u00b7  ${c.genre}',
+            style: muted,
           ),
           const SizedBox(height: 16),
-          // Progress bar (agar ko'rilgan bo'lsa)
           if (progress > 0) ...[
             Row(
               children: [
                 Expanded(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(2),
                     child: LinearProgressIndicator(
                       value: progress,
-                      backgroundColor: Colors.white.withValues(alpha: 0.15),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        Colors.red,
-                      ),
                       minHeight: 4,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Text(
                   '${(progress * 100).toInt()}%',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 12,
+                  style: context.text.labelMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
           ],
-          // Subtitle
+          Text(c.subtitle, style: context.text.titleMedium),
+          const SizedBox(height: 8),
           Text(
-            c.subtitle,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Description
-          Text(
-            _generateDescription(c, l),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 16,
-              height: 1.6,
-            ),
+            _description(c, l),
+            style: muted?.copyWith(height: 1.6),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 12),
-          // Action buttons
+          const SizedBox(height: 24),
           Row(
             children: [
-              _ActionButton(
+              TvButton(
                 icon: Icons.play_arrow_rounded,
                 label: l.t('btn_watch'),
-                primary: true,
+                tone: TvButtonTone.primary,
                 autofocus: true,
                 onTap: () {
                   Navigator.push(
@@ -343,10 +236,9 @@ class _DetailScreenState extends State<DetailScreen>
                 },
               ),
               const SizedBox(width: 12),
-              _ActionButton(
+              TvButton(
                 icon: isFav ? Icons.favorite : Icons.add,
                 label: isFav ? l.t('my_favorites') : l.t('btn_add_list'),
-                primary: isFav,
                 onTap: () {
                   favorites.toggleFavorite(c);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -356,78 +248,62 @@ class _DetailScreenState extends State<DetailScreen>
                             ? "'${c.title}' olib tashlandi"
                             : "'${c.title}' ${l.t('added_to_list')}",
                       ),
-                      backgroundColor: const Color(0xFF6C63FF),
                       duration: const Duration(seconds: 2),
                     ),
                   );
                 },
               ),
               const SizedBox(width: 12),
-              _ActionButton(
+              TvButton(
                 icon: Icons.share_outlined,
                 label: l.t('btn_share'),
-                primary: false,
                 onTap: () {},
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Cast info
-          _buildCastRow(c, l),
+          const SizedBox(height: 32),
+          _buildCastRow(context, l),
         ],
       ),
     );
   }
 
-  Widget _buildCastRow(Content c, LocaleProvider l) {
-    final cast = _generateCast(c.genre);
+  Widget _buildCastRow(BuildContext context, LocaleProvider l) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           l.t('cast_label'),
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.4),
-            fontSize: 11,
+          style: context.text.labelMedium?.copyWith(
+            color: colors.onSurfaceVariant,
             letterSpacing: 2,
-            fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 12),
         Row(
-          children: cast
-              .map(
-                (name) => Padding(
-                  padding: const EdgeInsets.only(right: 20),
-                  child: Column(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: const Color(
-                          0xFF6C63FF,
-                        ).withValues(alpha: 0.3),
-                        child: Text(
-                          name[0],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
+          children: [
+            for (final name in _cast)
+              Padding(
+                padding: const EdgeInsets.only(right: 24),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: colors.surfaceContainerHigh,
+                      child: Text(name[0], style: context.text.titleMedium),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      name.split(' ')[0],
+                      style: context.text.labelMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        name.split(' ')[0],
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              )
-              .toList(),
+              ),
+          ],
         ),
       ],
     );
@@ -458,8 +334,8 @@ class _DetailScreenState extends State<DetailScreen>
     }
   }
 
-  String _generateDescription(Content c, LocaleProvider l) {
-    final keyMap = {
+  String _description(Content c, LocaleProvider l) {
+    const keyByGenre = {
       'Sci-Fi': 'desc_scifi',
       'Drama': 'desc_drama',
       'Horror': 'desc_horror',
@@ -469,156 +345,6 @@ class _DetailScreenState extends State<DetailScreen>
       'Sport': 'desc_sport',
       'Romance': 'desc_romance',
     };
-    final key = keyMap[c.genre] ?? 'desc_default';
-    return l.t(key);
+    return l.t(keyByGenre[c.genre] ?? 'desc_default');
   }
-
-  List<String> _generateCast(String genre) {
-    return ['Amir K', 'Dilnoza M', 'Sardor T', 'Malika N'];
-  }
-}
-
-class _MetaBadge extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _MetaBadge({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool primary;
-  final bool autofocus;
-  final VoidCallback onTap;
-
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.primary,
-    required this.onTap,
-    this.autofocus = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Focus(
-      autofocus: autofocus,
-      onKeyEvent: (node, event) {
-        if (_isTvActivateEvent(event)) {
-          onTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Builder(
-        builder: (ctx) {
-          final focused = Focus.of(ctx).hasFocus;
-          return GestureDetector(
-            onTap: onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: focused
-                    ? Colors.white
-                    : primary
-                    ? const Color(0xFF6C63FF)
-                    : Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: focused
-                      ? Colors.white
-                      : primary
-                      ? const Color(0xFF6C63FF)
-                      : Colors.white.withValues(alpha: 0.2),
-                  width: 1.5,
-                ),
-                boxShadow: focused
-                    ? [
-                        BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ]
-                    : primary
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFF6C63FF).withValues(alpha: 0.4),
-                          blurRadius: 15,
-                        ),
-                      ]
-                    : [],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    color: focused
-                        ? Colors.black
-                        : primary
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.8),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: focused
-                          ? Colors.black
-                          : primary
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.8),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.03)
-      ..strokeWidth = 1;
-    for (double x = 0; x < size.width; x += 40) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += 40) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
 }
