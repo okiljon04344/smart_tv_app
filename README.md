@@ -80,7 +80,26 @@ flutter run -d chrome
 
 ---
 
+## 🔐 Admin Access / 管理者権限
+
+管理者権限はメールアドレスではなく **Firebase Auth Custom Claims**（`admin: true`）で判定します。`database.rules.json` とアプリの両方が同じ Claim を参照します。
+
+Admin rights are granted with the `admin` custom claim, which only the Admin SDK can set. The rules are covered by emulator tests in `test_rules/` (also run in CI).
+
+```bash
+cd tools/set_admin_claim
+npm install
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json  # never commit this file
+node index.js grant owner@example.com
+```
+
+---
+
 ## 👤 Author / 開発者
 **Oqiljon Nabiyev (ナビエフ・オキルジョン)**
 - 🌐 Portfolio: [https://okiljon04344.github.io](https://okiljon04344.github.io)
 - 🐙 GitHub: [@okiljon04344](https://github.com/okiljon04344)
+
+> **📝 Commit history note / コミット履歴について**
+> 最初のコミット（Initial commit）は、開発に使用したPCのGit設定が友人のアカウントのままだったため、別名義で記録されています。それ以降を含め、コードはすべて本人が開発しています。
+> The initial commit was recorded under a friend's name because the development machine's Git config still pointed to their account; all code in this repository was written by me.
