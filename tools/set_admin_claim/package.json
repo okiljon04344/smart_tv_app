@@ -1,0 +1,16 @@
+{
+  "name": "set-admin-claim",
+  "private": true,
+  "description": "Grant or revoke the admin custom claim used by database.rules.json.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

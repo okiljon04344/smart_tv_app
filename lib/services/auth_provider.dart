@@ -5,7 +5,6 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthProvider extends ChangeNotifier {
-  static const String adminEmail = 'okiljonnabev@gmail.com';
   static const String tvAdminBlockedMessage =
       'Admin account TV qurilmada login qila olmaydi';
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -13,6 +12,7 @@ class AuthProvider extends ChangeNotifier {
   );
 
   User? _user;
+  bool _hasAdminClaim = false;
   bool _isGuest = false;
   bool _isBusy = false;
   String? _error;
@@ -39,17 +39,56 @@ class AuthProvider extends ChangeNotifier {
     return logicalSize.width >= 600 || logicalSize.shortestSide >= 600;
   }
 
-  bool _isAdminEmail(String? email) =>
-      (email ?? '').trim().toLowerCase() == adminEmail;
+  /// Admin rights come from the `admin` custom claim, which only the Admin
+  /// SDK can set (see tools/set_admin_claim). `database.rules.json` checks the
+  /// same claim, so the client flag only decides what UI is shown.
+  Future<bool> _readAdminClaim(User user) async {
+    try {
+      final token = await user.getIdTokenResult(true);
+      return token.claims?['admin'] == true;
+    } catch (e) {
+      debugPrint('Failed to read admin claim: $e');
+      return false;
+    }
+  }
 
-  bool _shouldBlockAdminOnTv(String? email) =>
-      _isTvLikeDevice && _isAdminEmail(email);
+  Future<void> _signOutEverywhere() async {
+    if (_isFirebaseReady) {
+      await FirebaseAuth.instance.signOut();
+    }
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {
+      // Ignore Google sign-out issues for email/password users.
+    }
+  }
+
+  /// Applies a freshly signed-in [user]. Admin accounts are not allowed on TV
+  /// devices, so they are signed out again there.
+  Future<void> _applySignedInUser(
+    User? user, {
+    required bool createDefaults,
+  }) async {
+    _user = user;
+    _hasAdminClaim = user != null && await _readAdminClaim(user);
+    if (user != null && _hasAdminClaim && _isTvLikeDevice) {
+      await _signOutEverywhere();
+      _user = null;
+      _hasAdminClaim = false;
+      _error = tvAdminBlockedMessage;
+      return;
+    }
+    if (user != null) {
+      await _syncUserProfile(user, createDefaults: createDefaults);
+    }
+    _error = null;
+  }
 
   User? get user => _user;
   bool get isGuest => _isGuest;
   bool get isBusy => _isBusy;
   bool get isSignedIn => _user != null || _isGuest;
-  bool get isAdmin => _isAdminEmail(_user?.email);
+  bool get isAdmin => _hasAdminClaim;
   String? get error => _error;
 
   void signInAsGuest() {
@@ -62,24 +101,10 @@ class AuthProvider extends ChangeNotifier {
     _isBusy = true;
     notifyListeners();
     try {
-      _user = _isFirebaseReady ? FirebaseAuth.instance.currentUser : null;
-      if (_user != null && _shouldBlockAdminOnTv(_user?.email)) {
-        if (_isFirebaseReady) {
-          await FirebaseAuth.instance.signOut();
-        }
-        try {
-          await _googleSignIn.signOut();
-        } catch (_) {
-          // Ignore Google sign-out issues for email/password users.
-        }
-        _user = null;
-        _error = tvAdminBlockedMessage;
-        return;
-      }
-      if (_user != null) {
-        await _syncUserProfile(_user!, createDefaults: false);
-      }
-      _error = null;
+      await _applySignedInUser(
+        _isFirebaseReady ? FirebaseAuth.instance.currentUser : null,
+        createDefaults: false,
+      );
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -104,20 +129,6 @@ class AuthProvider extends ChangeNotifier {
         _error = 'Sign-in cancelled';
         return;
       }
-      if (_shouldBlockAdminOnTv(googleUser.email)) {
-        _error = tvAdminBlockedMessage;
-        try {
-          await _googleSignIn.signOut();
-        } catch (_) {
-          // Best effort to clear Google session.
-        }
-        if (_isFirebaseReady) {
-          await FirebaseAuth.instance.signOut();
-        }
-        _user = null;
-        return;
-      }
-
       final auth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: auth.accessToken,
@@ -127,11 +138,7 @@ class AuthProvider extends ChangeNotifier {
       final userCredential = await FirebaseAuth.instance.signInWithCredential(
         credential,
       );
-      _user = userCredential.user;
-      if (_user != null) {
-        await _syncUserProfile(_user!, createDefaults: false);
-      }
-      _error = null;
+      await _applySignedInUser(userCredential.user, createDefaults: false);
     } on FirebaseAuthException catch (e) {
       _error = e.message ?? e.code;
     } catch (e) {
@@ -151,19 +158,9 @@ class AuthProvider extends ChangeNotifier {
         throw StateError('Firebase is not initialized');
       }
 
-      if (_shouldBlockAdminOnTv(email)) {
-        _error = tvAdminBlockedMessage;
-        _user = null;
-        return;
-      }
-
       final userCredential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email.trim(), password: password);
-      _user = userCredential.user;
-      if (_user != null) {
-        await _syncUserProfile(_user!, createDefaults: false);
-      }
-      _error = null;
+      await _applySignedInUser(userCredential.user, createDefaults: false);
     } on FirebaseAuthException catch (e) {
       _error = e.message ?? e.code;
     } catch (e) {
@@ -188,11 +185,7 @@ class AuthProvider extends ChangeNotifier {
             email: email.trim(),
             password: password,
           );
-      _user = userCredential.user;
-      if (_user != null) {
-        await _syncUserProfile(_user!, createDefaults: true);
-      }
-      _error = null;
+      await _applySignedInUser(userCredential.user, createDefaults: true);
     } on FirebaseAuthException catch (e) {
       _error = e.message ?? e.code;
     } catch (e) {
@@ -208,15 +201,9 @@ class AuthProvider extends ChangeNotifier {
     _isBusy = true;
     notifyListeners();
     try {
-      if (_isFirebaseReady) {
-        await FirebaseAuth.instance.signOut();
-      }
-      try {
-        await _googleSignIn.signOut();
-      } catch (_) {
-        // Ignore Google sign-out issues for email/password users.
-      }
+      await _signOutEverywhere();
       _user = null;
+      _hasAdminClaim = false;
       _isGuest = false;
       _error = null;
     } catch (e) {

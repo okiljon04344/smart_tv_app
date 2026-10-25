@@ -2,23 +2,23 @@
     "rules": {
         "movies": {
             ".read": true,
-            ".write": "auth != null && auth.token.email === 'okiljonnabev@gmail.com'"
+            ".write": "auth != null && auth.token.admin === true"
         },
         "categories": {
             ".read": true,
-            ".write": "auth != null && auth.token.email === 'okiljonnabev@gmail.com'"
+            ".write": "auth != null && auth.token.admin === true"
         },
         "users": {
             "$uid": {
-                ".read": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')",
+                ".read": "auth != null && ($uid === auth.uid || auth.token.admin === true)",
                 "favorites": {
-                    ".write": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')"
+                    ".write": "auth != null && ($uid === auth.uid || auth.token.admin === true)"
                 },
                 "profile_info": {
-                    ".write": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')"
+                    ".write": "auth != null && ($uid === auth.uid || auth.token.admin === true)"
                 },
                 "subscription": {
-                    ".write": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')"
+                    ".write": "auth != null && (auth.token.admin === true || ($uid === auth.uid && ((newData.child('plan').val() === 'free' && newData.child('active').val() === false) || (newData.child('plan').val() === data.child('plan').val() && newData.child('active').val() === data.child('active').val()))))"
                 }
             }
         }

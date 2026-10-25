@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Service account keys & tool dependencies
+*service-account*.json
+tools/**/node_modules/
+test_rules/node_modules/
+*-debug.log
