@@ -30,7 +30,7 @@ class LocaleProvider extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      // Keep previous language loaded and surface useful diagnostics.
+      // Keep the previous language loaded.
       debugPrint('Locale load failed for $locale: $e');
       if (_strings.isEmpty) {
         _strings = {
@@ -46,8 +46,8 @@ class LocaleProvider extends ChangeNotifier {
     }
   }
 
-  /// Returns the translated string for [key].
-  /// Use {n} placeholder for dynamic values: t('search_results', n: '5')
+  /// Returns the translated string for [key], or the key itself if missing.
+  /// `{n}` in the string is replaced by [n].
   String t(String key, {String? n}) {
     String val = _strings[key]?.toString() ?? key;
     if (n != null) val = val.replaceAll('{n}', n);

@@ -1,5 +1,3 @@
-﻿import 'package:firebase_database/firebase_database.dart';
-
 import '../models/content.dart';
 
 List<Category> categories = [
@@ -340,31 +338,16 @@ List<Category> categories = [
   ),
 ];
 
-/// Barcha kontentlar ro'yxati (search va favorites uchun)
+/// Flat list of every catalogue item, used by search and favourites.
 List<Content> get allContent => categories.expand((c) => c.items).toList();
 
-/// Seansda ko'rilayotgan kontentlar (demo uchun dastlabki progress)
+/// Initial watch progress so the demo has a "Continue watching" row.
 final Map<String, double> initialWatchProgress = {
   '1': 0.65,
   '7': 0.30,
   '19': 0.85,
   '8': 0.15,
 };
-
-Future<void> loadCatalogFromRealtime() async {
-  try {
-    final db = FirebaseDatabase.instance;
-    final moviesSnap = await db.ref('movies').get();
-    final categoriesSnap = await db.ref('categories').get();
-    final parsed = parseCatalogFromRealtime(
-      moviesSnap.value,
-      categoriesSnap.value,
-    );
-    if (parsed.isNotEmpty) categories = parsed;
-  } catch (_) {
-    // Keep local fallback data if remote loading fails.
-  }
-}
 
 List<Category> parseCatalogFromRealtime(
   Object? moviesRaw,

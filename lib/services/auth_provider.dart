@@ -219,13 +219,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> syncFavorites(Set<String> favorites) async {
-    final user = _user;
-    if (!_isFirebaseReady || user == null) return;
-    final mapped = <String, bool>{for (final id in favorites) id: true};
-    await _usersRef.child(user.uid).child('favorites').set(mapped);
-  }
-
   Future<void> _syncUserProfile(
     User user, {
     required bool createDefaults,
