@@ -1,24 +1,30 @@
 {
     "rules": {
+        "admins": {
+            "$uid": {
+                ".read": "auth != null && $uid === auth.uid",
+                ".write": false
+            }
+        },
         "movies": {
             ".read": true,
-            ".write": "auth != null && auth.token.email === 'okiljonnabev@gmail.com'"
+            ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
         },
         "categories": {
             ".read": true,
-            ".write": "auth != null && auth.token.email === 'okiljonnabev@gmail.com'"
+            ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
         },
         "users": {
             "$uid": {
-                ".read": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')",
+                ".read": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).exists())",
                 "favorites": {
-                    ".write": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')"
+                    ".write": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).exists())"
                 },
                 "profile_info": {
-                    ".write": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')"
+                    ".write": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).exists())"
                 },
                 "subscription": {
-                    ".write": "auth != null && ($uid === auth.uid || auth.token.email === 'okiljonnabev@gmail.com')"
+                    ".write": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).exists())"
                 }
             }
         }

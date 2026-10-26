@@ -5,7 +5,9 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthProvider extends ChangeNotifier {
-  static const String adminEmail = 'okiljonnabev@gmail.com';
+  /// Admin e-mail, injected at build time with
+  /// `--dart-define=ADMIN_EMAIL=...`. Empty means no admin account is configured.
+  static const String adminEmail = String.fromEnvironment('ADMIN_EMAIL');
   static const String tvAdminBlockedMessage =
       'Admin account TV qurilmada login qila olmaydi';
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -39,8 +41,10 @@ class AuthProvider extends ChangeNotifier {
     return logicalSize.width >= 600 || logicalSize.shortestSide >= 600;
   }
 
-  bool _isAdminEmail(String? email) =>
-      (email ?? '').trim().toLowerCase() == adminEmail;
+  bool _isAdminEmail(String? email) {
+    if (adminEmail.isEmpty) return false;
+    return (email ?? '').trim().toLowerCase() == adminEmail.trim().toLowerCase();
+  }
 
   bool _shouldBlockAdminOnTv(String? email) =>
       _isTvLikeDevice && _isAdminEmail(email);
