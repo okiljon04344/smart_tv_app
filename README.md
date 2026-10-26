@@ -1,86 +1,92 @@
-# 📺 Smart TV Streaming Platform (`smart_tv_app`)
+# Smart TV App
 
 [![CI](https://github.com/okiljon04344/smart_tv_app/actions/workflows/ci.yml/badge.svg)](https://github.com/okiljon04344/smart_tv_app/actions/workflows/ci.yml)
-[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)](https://dart.dev)
-[![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
-[![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Web%20%7C%20Desktop-6C63FF)](#)
 
-> **🇯🇵 日本語** | **🇬🇧 English** | **🇺🇿 O'zbekcha**
+日本語 | [English](#english) | [O'zbekcha](#ozbekcha)
 
----
+## スクリーンショット
 
-## 📸 Screenshots / スクリーンショット
-
-| Home & Hero Banner | Content Details | Settings & Localization |
+| ホーム | 作品詳細 | プレーヤー |
 | :---: | :---: | :---: |
-| ![Home](docs/screenshots/sc1.png) | ![Details](docs/screenshots/sc3.png) | ![Settings](docs/screenshots/sc6.png) |
+| ![Home](docs/screenshots/sc3.png) | ![Details](docs/screenshots/sc_detail.png) | ![Player](docs/screenshots/sc_vid.png) |
 
----
+## 日本語
 
-## 🇯🇵 日本語 (Japanese Overview)
+### 概要
 
-### プロジェクト概要
-**Smart TV App** は、Android TV・Google TV・デスクトップ・Web 向けに設計された、10フィートUI（テレビリモコン / D-Pad ナビゲーション完全対応）の動画ストリーミングプラットフォームです。
+Flutter と Firebase で作成した、テレビ向け（10フィートUI）の動画ストリーミングアプリです。Android TV のリモコン（D-Pad）操作を主な入力として想定し、Web・デスクトップでも動作します。個人で開発している学習・ポートフォリオ用のプロジェクトです。
 
-### 主な機能・技術的ハイライト
-- **🎮 フル D-Pad / TVリモコン対応 (`tv_key_helper.dart`)**:
-  - Android TV リモコンの方向キー（上下左右）、決定キー（`Select` / `Enter` / `GameButtonA`）、戻るキー（`Back` / `Escape`）、メディア 재생/一時停止キーに完全対応。
-  - KeyDown / KeyUp の重複発火防止ロジックと視覚的フォーカスインジケーターを全画面に実装。
-- **🎬 ハイブリッド動画プレーヤー (`PlayerScreen`)**:
-  - ローカル/MP4 ストリーム（`video_player`）および YouTube ストリーム（`youtube_player_flutter`）の自動判別再生、10秒スキップ、視聴進捗（Continue Watching）のリアルタイム保存。
-- **☁️ オフラインファースト + Firebase 連携**:
-  - Cloud Firestore によるリアルタイムカタログ同期と、ネットワーク切断時のローカルカタログ自動フォールバック。
-  - Firebase Authentication（Google / メールログイン）＋ リモコン1クリックで利用できる **TV Demo / ゲストモード**。
-- **🌐 多言語対応 (i18n)**:
-  - ウズベク語 (`UZ`)・ロシア語 (`RU`)・英語 (`EN`) のリアルタイム切り替え。
+### 実装している機能
 
----
+- **D-Pad / リモコン操作**: 決定キー（`select` / `enter` / `gameButtonA` など）と戻るキー（`goBack` / `escape` / `browserBack`）を `lib/utils/tv_key_helper.dart` で処理します。KeyDown と KeyUp の両方が届く場合の二重発火を防ぎ、KeyUp のみ届くリモコンにも対応しています。画面ごとに `FocusScope` でフォーカス移動を管理しています。
+- **動画プレーヤー**: YouTube の URL を持つ作品は `youtube_player_flutter`、それ以外はアプリ同梱のサンプル動画を `video_player` で再生します。10秒スキップと再生位置の保存に対応しています。
+- **カタログ**: Firebase Realtime Database の `movies` / `categories` を購読して表示します。取得できない場合は、アプリ内のサンプルデータにフォールバックします。
+- **認証**: メールアドレス / パスワード、Google サインイン、ゲストモード（TV Demo）。
+- **お気に入りと視聴進捗**: `SharedPreferences` に保存します。お気に入りはログイン時に Realtime Database（`users/{uid}/favorites`）とも同期します。
+- **多言語 UI**: ウズベク語・ロシア語・英語（`assets/lang/*.json`）。
+- **管理画面**: 管理者アカウントでログインすると、Web またはスマートフォンサイズの画面で作品の登録・更新・削除ができます（`lib/screens/admin_screen.dart`）。デスクトップ・TV・タブレットサイズでは表示しません。
 
-## 🇬🇧 English Overview
+### 管理者設定
 
-### Project Summary
-**Smart TV App** is a cross-platform 10-foot UI streaming application built with Flutter for **Android TV, Web, and Desktop**. It features full directional pad (D-Pad) remote control navigation, hybrid video playback, watch-progress synchronization, and an admin content management panel.
+管理者のメールアドレスはソースコードに含めていません。
 
-### Key Features
-- **🎮 Dedicated TV Remote / D-Pad Engine (`lib/utils/tv_key_helper.dart`)**:
-  - Unified key handling across Android TV hardware remotes (`LogicalKeyboardKey.select`, `goBack`, `mediaPlayPause`) and desktop keyboards (`enter`, `space`, `escape`, arrow keys) without duplicate event firing.
-  - Explicit `FocusScope` management between the navigation sidebar, hero banner, horizontal content carousels, search tags, and settings panels.
-- **📺 Continue Watching & Favorites (`FavoritesProvider`)**:
-  - Tracks playback progress per title and persists watch history and favorite lists locally via `SharedPreferences`.
-- **🔐 Auth & Instant TV Demo Mode (`AuthProvider`)**:
-  - Supports Firebase Email/Password & Google Sign-In, plus a one-click **TV Demo / Guest Mode** for instant evaluation on Android TV emulators without typing credentials.
-- **🛠️ Admin Dashboard (`AdminScreen`)**:
-  - Built-in CRUD interface for managing streaming catalog items synced with Cloud Firestore.
-
----
-
-## 🇺🇿 O'zbekcha ( Loyiha haqida )
-
-**Smart TV App** — Android TV, Web va Desktop uchun Flutter'da yaratilgan zamonaviy media-striming ilovasi.
-- **TV Pult (D-Pad) boshqaruvi**: Barcha ekranlar (`Login`, `Home`, `Search`, `Details`, `Player`, `Settings`) televizor pulti orqali to'liq boshqariladi.
-- **TV Demo / Mehmon rejimi**: Login ekranida pult orqali bir tugmani bosib ro'yxatdan o'tmasdan ilovani sinab ko'rish imkoniyati mavjud.
-- **Gibrid Video Pleyer**: MP4 va YouTube videolarni o'ynatish, 10 soniyaga oldinga/orqaga o'tkazish va ko'rilgan joyidan davom ettirish (`Continue Watching`).
-
----
-
-## 🚀 Getting Started / 実行方法
+1. Firebase コンソールの Realtime Database で、管理者の UID を `/admins/{uid}` に `true` として登録します。`movies` / `categories` の書き込みと、他ユーザーのデータの参照は、このノードの有無で `database.rules.json` が判定します。
+2. アプリの管理画面を表示するには、ビルド時に `--dart-define=ADMIN_EMAIL=...` を指定します。未指定の場合、管理画面は表示されません。
 
 ```bash
-# Install dependencies
-flutter pub get
+flutter run -d chrome --dart-define=ADMIN_EMAIL=admin@example.com
+```
 
-# Run static analysis & widget tests
+### セットアップ
+
+```bash
+flutter pub get
 flutter analyze
 flutter test
-
-# Run on Chrome / Desktop / Android TV
 flutter run -d chrome
 ```
 
----
+`lib/firebase_options.dart` は自分の Firebase プロジェクトに合わせて再生成してください（`flutterfire configure`）。`tools/` には Realtime Database の動画データを Firebase CLI で編集する PowerShell スクリプト（`admin-video.ps1`）、`seed/` には初期データの JSON があります。
 
-## 👤 Author / 開発者
-**Oqiljon Nabiyev (ナビエフ・オキルジョン)**
-- 🌐 Portfolio: [https://okiljon04344.github.io](https://okiljon04344.github.io)
-- 🐙 GitHub: [@okiljon04344](https://github.com/okiljon04344)
+### テスト
+
+- `test/tv_key_helper_test.dart`: キー判定と二重発火防止
+- `test/catalog_parsing_test.dart`: Realtime Database 形式のデータ変換と `seed/*.json` の読み込み
+- `test/widget_test.dart`: ログイン画面からゲストモードでホーム画面へ遷移する流れ
+
+GitHub Actions で `flutter analyze` と `flutter test` を実行しています。
+
+## English
+
+A 10-foot UI video streaming app built with Flutter and Firebase. It is designed around Android TV remote (D-pad) input and also runs on web and desktop. It is a personal learning and portfolio project.
+
+- D-pad / remote handling with a duplicate-fire guard for KeyDown and KeyUp (`lib/utils/tv_key_helper.dart`).
+- Player for YouTube links (`youtube_player_flutter`) and bundled sample videos (`video_player`), with 10-second seek and saved watch progress.
+- Catalog read from Firebase Realtime Database, with a local sample-data fallback.
+- Email/password, Google sign-in and a guest mode.
+- UI languages: Uzbek, Russian, English.
+
+**Admin setup.** No admin e-mail is stored in the source. Register admin accounts under `/admins/{uid}` in Realtime Database (Firebase console); `database.rules.json` uses that node for write access to `movies` and `categories`. To show the admin panel in the app, build with `--dart-define=ADMIN_EMAIL=you@example.com`. Without it, the panel is hidden.
+
+```bash
+flutter pub get && flutter analyze && flutter test
+```
+
+## O'zbekcha
+
+Flutter va Firebase yordamida yaratilgan televizor uchun video-striming ilovasi. Android TV pulti (D-Pad) bilan boshqarishga mo'ljallangan, Web va Desktop'da ham ishlaydi. Bu shaxsiy o'quv va portfolio loyihasi.
+
+- Pult (D-Pad) boshqaruvi: `lib/utils/tv_key_helper.dart`.
+- Pleyer: YouTube havolalari va ilova bilan birga keladigan namunaviy videolar, 10 soniyaga o'tkazish, ko'rilgan joyni saqlash.
+- Katalog Firebase Realtime Database'dan olinadi, ulanish bo'lmasa mahalliy namunaviy ma'lumotlar ishlatiladi.
+- Email/parol, Google orqali kirish va mehmon rejimi.
+- Tillar: o'zbek, rus, ingliz.
+
+Admin hisoblari Firebase konsolida `/admins/{uid}` ostida ro'yxatdan o'tkaziladi. Admin panelni ko'rsatish uchun ilovani `--dart-define=ADMIN_EMAIL=...` bilan ishga tushiring.
+
+## 開発者 / Author
+
+Okiljon Nabiev (ナビエフ・オキルジョン)
+
+- Portfolio: [okiljon04344.github.io](https://okiljon04344.github.io)
+- GitHub: [@okiljon04344](https://github.com/okiljon04344)
