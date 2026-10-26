@@ -340,10 +340,10 @@ List<Category> categories = [
   ),
 ];
 
-/// Barcha kontentlar ro'yxati (search va favorites uchun)
+/// Flat list of all content items (used by search and favorites).
 List<Content> get allContent => categories.expand((c) => c.items).toList();
 
-/// Seansda ko'rilayotgan kontentlar (demo uchun dastlabki progress)
+/// Initial watch progress for the demo session, keyed by content id.
 final Map<String, double> initialWatchProgress = {
   '1': 0.65,
   '7': 0.30,

@@ -277,7 +277,7 @@ class _DetailScreenState extends State<DetailScreen>
             ],
           ),
           const SizedBox(height: 16),
-          // Progress bar (agar ko'rilgan bo'lsa)
+          // Progress bar (shown if the title has been watched)
           if (progress > 0) ...[
             Row(
               children: [

@@ -492,7 +492,7 @@ class _MainContentState extends State<_MainContent> {
                 widget.categories.length +
                 (continueList.isNotEmpty && widget.navIndex == 0 ? 1 : 0),
             itemBuilder: (ctx, i) {
-              // Home ekranida birinchi bo'lib "Continue Watching" ko'rsatamiz
+              // Show "Continue Watching" first on the home screen
               if (widget.navIndex == 0 && continueList.isNotEmpty) {
                 if (i == 0) {
                   return _ContinueWatchingRow(items: continueList);

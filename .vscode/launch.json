@@ -2,14 +2,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Flutter (Windows - Tez)",
+            "name": "Flutter (Windows)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "debug",
             "deviceId": "windows",
             "args": [
-                "--hot",
-                "--no-sound-null-safety"
+                "--hot"
             ]
         },
         {
@@ -29,13 +28,11 @@
             "flutterMode": "debug",
             "deviceId": "chrome",
             "args": [
-                "--hot",
-                "--web-renderer",
-                "canvaskit"
+                "--hot"
             ]
         },
         {
-            "name": "Flutter (Profile - Tezlik testi)",
+            "name": "Flutter (Windows - Profile)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile",
